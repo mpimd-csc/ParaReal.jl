@@ -10,13 +10,6 @@ function DiffEqBase.solve(prob::ODEProblem,
 
     issubset(workers, procs()) || error("Unknown worker ids in `$workers`, no subset of `$(procs())`")
 
-    # TODO
-    # communicate the initial problem to all workers
-    # restrict to local problem: prob = localpart(prob)
-    # initialize coarse and fine integrators: maybe request initializer function that just receives the local problem
-    #
-    # close remote channels when local/fine solution did converge
-
     uType = typeof(prob.u0)
     uChannel = Channel{uType}
     createchan = () -> uChannel(1)
@@ -44,28 +37,4 @@ function DiffEqBase.solve(prob::ODEProblem,
     # TODO: drain and close all channels so that they can be gc'ed.
     # Wait for last solution
     results
-end
-
-function worker(input, output, prob, alg::ParaRealAlgorithm, first::Bool, last::Bool)
-    it = 0
-    coarse_sol = 42
-    for u0 in input
-        it += 1
-
-        # Propagate new initial value to local integrators
-        reinit!(coarse_integrator, u0)
-        coarse_sol = perform_step!(coarse_integrator)
-
-        reinit!(fine_integrator, u0)
-        coarse_sol = solve!(fine_integrator) # TODO: extract only final value
-
-        it == 1 && put!(output, coarse_sol) && continue
-
-        converged = true
-        converged && close(output)
-    end
-    # previous worker did converge; last chance for an update
-    close(output)
-
-    true, diff, it
 end

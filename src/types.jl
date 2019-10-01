@@ -15,7 +15,7 @@ struct ParaRealAlgorithm{CoarseAlgorithm,
     "same as `coarse`"
     fine::FineAlgorithm
     "how to merge coarse and fine solutions"
-    update!::UpdateFunction # to merge coarse and fine solutions
+    update!::UpdateFunction
 end
 
 ParaRealAlgorithm(coarse, fine) = ParaRealAlgorithm(coarse, fine, default_update!)
