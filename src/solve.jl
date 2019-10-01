@@ -21,15 +21,14 @@ function DiffEqBase.solve(prob::ODEProblem,
     uChannel = Channel{uType}
     createchan = () -> uChannel(1)
 
-    steps = length(workers)
-    conns = Vector{uChannel}(undef, steps+1)
-    for i in 1:steps
-        conns[i] = RemoteChannel(createchan, workers[i])
+    conns = asyncmap(workers) do w
+        RemoteChannel(createchan, w)
     end
-    conns[end] = RemoteChannel(createchan, myid())
+    push!(conns, RemoteChannel(createchan, myid()))
 
     # TODO: killswitches similar to conns
 
+    steps = length(workers)
     results = map(1:steps) do i
         w = workers[i]
         in = conns[i]
@@ -42,7 +41,9 @@ function DiffEqBase.solve(prob::ODEProblem,
     put!(firstchan, u0)
     close(firstchan)
 
+    # TODO: drain and close all channels so that they can be gc'ed.
     # Wait for last solution
+    results
 end
 
 function worker(input, output, prob, alg::ParaRealAlgorithm, first::Bool, last::Bool)
