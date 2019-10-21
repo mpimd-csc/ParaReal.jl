@@ -1,15 +1,20 @@
 using Distributed
+using Plots
+using ParaReal # compile only once (currently broken)
 
 nprocs() == 1 && addprocs()
 
-using ParaReal
-using DifferentialEquations
+@info "Loading modules"
+@everywhere using ParaReal
+@everywhere using DifferentialEquations
 
-include("problems.jl")
+@everywhere include("problems.jl")
 include("vanderpol.jl")
 
-coarse = (prob) -> init(prob, Euler())
+@info "Creating algorithm instance"
+coarse = (prob) -> init(prob, Euler(), dt=prob.tspan[2]-prob.tspan[1])
 fine = (prob) -> init(prob, RK4())
 alg = ParaRealAlgorithm(coarse, fine)
 
-solve(prob, alg)
+@info "Solving"
+sols, conns = solve(prob, alg)

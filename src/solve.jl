@@ -36,5 +36,5 @@ function DiffEqBase.solve(prob::ODEProblem,
 
     # TODO: drain and close all channels so that they can be gc'ed.
     # Wait for last solution
-    results
+    results, conns
 end

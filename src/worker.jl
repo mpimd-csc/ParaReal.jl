@@ -21,8 +21,8 @@ function _solve(prob::ODEProblem{uType},
                 alg::ParaRealAlgorithm,
                 step::Integer,
                 n::Integer,
-                in::AbstractChannel{uType},
-                out::AbstractChannel{uType};
+                in::RemoteChannel{<:AbstractChannel{uType}},
+                out::RemoteChannel{<:AbstractChannel{uType}};
                 tol = 1e-5,
                ) where uType
 
@@ -40,12 +40,13 @@ function _solve(prob::ODEProblem{uType},
     # Compute first coarse solution and pass it on
     coarse_sol = solve!(coarse_integrator)
     coarse_u = coarse_sol[end]
-    put(out, coarse_u)
+    step == n || put!(out, coarse_u)
 
     # Compute fine solutions until convergence
     coarse_u_old = similar(u0)
     correction = similar(u0)
-    for u0 in _local(in)
+    niters = 0
+    for u0 in in
         copy!(coarse_u_old, coarse_u)
         reinit!(coarse_integrator, u0)
         coarse_sol = solve!(coarse_integrator)
@@ -59,29 +60,14 @@ function _solve(prob::ODEProblem{uType},
         diff = norm(correction - fine_u,1)/norm(correction,1)
         diff < tol && close(out) && break
         # TODO: tell previous worker that no more solutions will be read from `in`
+
+        step == n || put!(out, correction)
+        niters += 1
     end
 
     # Previous did converge, so did this worker
+    step == n && put!(out, correction)
     close(out)
-end
 
-"""
-    _local(chan::AbstractChannel{T}) -> ::Channel{T}
-
-Return a local version of `chan` to be used for iteration.
-"""
-function _local end
-
-_local(chan::Channel) = chan
-
-function _local(chan::RemoteChannel{T}, sz=0) where T
-    c = Channel{T}(sz)
-    @async begin
-        while isopen(chan)
-            wait(chan)
-            put(c, take(chan))
-        end
-        close(c)
-    end
-    c
+    niters, fine_sol # TODO: fix unknown fine_sol .. store in cache or something
 end
