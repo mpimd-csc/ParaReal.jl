@@ -1,3 +1,5 @@
+using LinearAlgebra: norm
+
 # TODO: put into worker setup / config:
 # step, n,
 # in, out,
@@ -27,47 +29,72 @@ function _solve(prob::ODEProblem{uType},
                ) where uType
 
     # Initialize local problem instance
-    u0 = take!(in)
     t0, tf = prob.tspan
     tspan = (((n-step+1)*t0 + (step-1)*tf)/n,
              ((n-step)  *t0 + (step)  *tf)/n)
-    prob = remake(prob, u0=u0, tspan=tspan) # copies
+    prob = remake(prob, tspan=tspan) # copies
 
     # Initialize solver algorithms
     coarse_integrator = alg.coarse(prob)
     fine_integrator = alg.fine(prob)
 
-    # Compute first coarse solution and pass it on
-    coarse_sol = solve!(coarse_integrator)
-    coarse_u = coarse_sol[end]
-    step == n || put!(out, coarse_u)
+    # Allocate buffers
+    coarse_u_old = similar(prob.u0)
+    correction = similar(prob.u0)
 
-    # Compute fine solutions until convergence
-    coarse_u_old = similar(u0)
-    correction = similar(u0)
+    # Define variables to extend their scope
+    coarse_u = nothing
+    fine_u = nothing
+    fine_sol = nothing
+
+    converged = false
     niters = 0
     for u0 in in
-        copy!(coarse_u_old, coarse_u)
+        niters += 1
+
+        # Backupt old coarse solution if needed
+        niters > 1 && copyto!(coarse_u_old, coarse_u)
+
+        # Compute coarse solution
         reinit!(coarse_integrator, u0)
         coarse_sol = solve!(coarse_integrator)
         coarse_u = coarse_sol[end]
 
+        # Hand correction of coarse solution on to the next workers.
+        # Note that there is no correction to be done in the first iteration.
+        if niters == 1
+            step == n || put!(out, coarse_u)
+        else
+            alg.update!(correction, coarse_u, fine_u, coarse_u_old)
+            diff = norm(correction - fine_u, 1) / norm(correction, 1)
+            if diff < tol
+                @debug "Worker converged" step niters
+                converged = true
+                break
+            else
+                step == n || put!(out, correction)
+            end
+        end
+
+        # Compute fine solution
         reinit!(fine_integrator, u0)
         fine_sol = solve!(fine_integrator)
         fine_u = fine_sol[end]
-
-        alg.update!(correction, coarse_u, fine_u, coarse_u_old)
-        diff = norm(correction - fine_u,1)/norm(correction,1)
-        diff < tol && close(out) && break
-        # TODO: tell previous worker that no more solutions will be read from `in`
-
-        step == n || put!(out, correction)
-        niters += 1
     end
 
-    # Previous did converge, so did this worker
-    step == n && put!(out, correction)
-    close(out)
+    if converged
+        # If this worker converged, there is no need to pass on the next/same
+        # solution again.
+        # TODO: tell previous workers that no more solutions will be
+        # read from `in`. See issue #3.
+        close(out)
+    else
+        @debug "Previous worker converged; sending last fine solution" step niters
+        # If instead the previous did converge, hand on the last fine solution
+        # as the converged solution for this worker.
+        put!(out, fine_u)
+        close(out)
+    end
 
-    niters, fine_sol # TODO: fix unknown fine_sol .. store in cache or something
+    niters, fine_sol
 end

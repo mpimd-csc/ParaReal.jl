@@ -12,8 +12,10 @@ nprocs() == 1 && addprocs()
 include("vanderpol.jl")
 
 @info "Creating algorithm instance"
-coarse = (prob) -> init(prob, Euler(), dt=prob.tspan[2]-prob.tspan[1])
-fine = (prob) -> init(prob, RK4())
+tspan = prob.tspan
+dt = tspan[2] - tspan[1]
+coarse = (prob) -> init(prob, Euler(), dt=dt)
+fine = (prob) -> init(prob, Euler(), dt=dt/20)
 alg = ParaRealAlgorithm(coarse, fine)
 
 @info "Solving"
