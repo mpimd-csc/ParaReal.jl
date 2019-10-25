@@ -5,7 +5,7 @@ using DiffEqBase
 
 function DiffEqBase.solve(prob::ODEProblem,
                           alg::ParaRealAlgorithm;
-                          workers = procs(),
+                          workers = workers(),
                          )
 
     issubset(workers, procs()) || error("Unknown worker ids in `$workers`, no subset of `$(procs())`")
