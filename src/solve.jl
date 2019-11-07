@@ -6,6 +6,7 @@ using DiffEqBase
 function DiffEqBase.solve(prob::ODEProblem,
                           alg::ParaRealAlgorithm;
                           workers = workers(),
+                          maxiters = 100,
                          )
 
     issubset(workers, procs()) || error("Unknown worker ids in `$workers`, no subset of `$(procs())`")
@@ -26,7 +27,7 @@ function DiffEqBase.solve(prob::ODEProblem,
         w = workers[i]
         in = conns[i]
         out = conns[i+1]
-        @spawnat w _solve(prob, alg, i, steps, in, out)
+        @spawnat w _solve(prob, alg, i, steps, in, out; maxiters=maxiters)
     end
 
     u0 = prob.u0

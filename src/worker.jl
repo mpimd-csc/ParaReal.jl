@@ -26,6 +26,7 @@ function _solve(prob::ODEProblem{uType},
                 prev::RemoteChannel{<:AbstractChannel{uType}},
                 next::RemoteChannel{<:AbstractChannel{uType}};
                 tol = 1e-5,
+                maxiters = 100,
                ) where uType
 
     # Initialize local problem instance
@@ -51,6 +52,9 @@ function _solve(prob::ODEProblem{uType},
     niters = 0
     for u0 in prev
         niters += 1
+
+        # Abort if maximum number of iterations is reached.
+        niters > maxiters && break
 
         # Backupt old coarse solution if needed
         niters > 1 && copyto!(coarse_u_old, coarse_u)
@@ -80,6 +84,12 @@ function _solve(prob::ODEProblem{uType},
         reinit!(fine_integrator, u0)
         fine_sol = solve!(fine_integrator)
         fine_u = fine_sol[end]
+    end
+
+    if niters > maxiters
+        @warn "Worker $step reached maximum number of iterations: $maxiters"
+        #close(next)
+        #return maxiters == 1 ? coarse_sol : fine_sol
     end
 
     if converged
