@@ -29,26 +29,22 @@ alg = ParaRealAlgorithm(coarse, fine)
 @info "Solving"
 ref = solve!(fine(prob))
 
-function plot_after_niters(i, p=plot(ref, vars=(1,2), label="ref"))
+function plot_after_niters(i, p=plot(ref, vars=(1,2), label="ref", lw=10, opacity=0.5))
     rsols, conns = solve(prob, alg, maxiters=i)
     fsols = map(fetch, rsols)
     niters = map(x -> x[1], fsols)
     @show niters
 
+    # Plot the fine solutions
     sols = map(x -> x[2], fsols)
-    anchors = map(x -> x[1], sols)
-    push!(anchors, sols[end][end]) # Note that for `i==1` this is a fine solution, not a coarse one.
-    x = map(x -> x[1], anchors)
-    y = map(x -> x[2], anchors)
-
-    plot!(p, x, y, label="maxiters=$i")
+    for (step,sol) in enumerate(sols)
+        plot!(p, sol, vars=(1,2), title="maxiters=$i", label="step=$step")
+    end
     p
 end
 
-plot(plot_after_niters(1),
-     plot_after_niters(2),
-     plot_after_niters(3),
-     plot_after_niters(4),
-     layout = (2,2))
+pp = map(plot_after_niters, 1:4)
+plot(pp..., layout=(2,2), legend=:none)
 plot!(size=(1200,800))
+plot!(xlim=(-0.8,1.0), ylims=(-1.0,0.6), ticks=-1.0:0.2:1.0)
 
