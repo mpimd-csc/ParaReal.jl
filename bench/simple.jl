@@ -2,7 +2,7 @@ using Distributed
 
 if nprocs() == 1
     @info "Spawning workers"
-    addprocs()
+    addprocs(4)
     @info "Connecting to workers"
     @everywhere 1+1
 end
@@ -10,7 +10,9 @@ end
 t = zeros(3)
 
 @info "Loading ParaReal"
-_, t[1], _, _, _ = @timed @everywhere using ParaReal
+_, t[1], _, _, _ = @timed begin
+    @everywhere using ParaReal
+end
 @info "... took $(t[1])"
 @info "Loading remaining modules"
 @everywhere begin
