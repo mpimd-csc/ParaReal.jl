@@ -1,0 +1,19 @@
+### Julia stuff
+
+Manifest.toml
+
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+deps/deps.jl
+
+
+### Other stuff
+
+tmp
+
+*.png
+*.pdf
+
+*.vim
+
