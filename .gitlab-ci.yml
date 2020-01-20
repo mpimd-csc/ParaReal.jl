@@ -1,3 +1,18 @@
+# Store packages locally to allow caching.
+variables:
+  JULIA_DEPOT_PATH: ${CI_PROJECT_DIR}/.julia
+
+# Cache packages per job (i.e. Julia version) and project specification.
+# Do not cache Manifest.toml so that Julia still uses the most recent packages.
+cache:
+  key:
+    prefix: ${CI_JOB_NAME}
+    files:
+      - Project.toml
+  paths:
+    - .julia/packages
+    - .julia/compiled
+
 .definitions:
   script: &script
     script:
