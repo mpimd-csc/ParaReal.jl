@@ -16,6 +16,9 @@ cache:
 .definitions:
   script: &script
     script:
+      - julia -e '
+          using InteractiveUtils;
+          versioninfo()'
       - julia --project=@. -e '
           using Pkg;
           Pkg.build();
