@@ -1,4 +1,5 @@
 using LinearAlgebra: norm
+using DiffEqBase: solution_new_retcode
 
 # TODO: put into worker setup / config:
 # step, n,
@@ -104,5 +105,6 @@ function _solve(prob::ODEProblem{uType},
         close(next)
     end
 
-    niters, fine_sol
+    retcode = niters > maxiters ? :MaxIters : :Success
+    solution_new_retcode(fine_sol, retcode)
 end
