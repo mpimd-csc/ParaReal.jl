@@ -20,8 +20,6 @@ function DiffEqBase.solve(prob::ODEProblem,
     end
     push!(conns, RemoteChannel(createchan, myid()))
 
-    # TODO: killswitches similar to conns
-
     steps = length(workers)
     results = map(1:steps) do i
         w = workers[i]
