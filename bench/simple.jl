@@ -7,7 +7,7 @@ if nprocs() == 1
     @everywhere 1+1
 end
 
-t = zeros(3)
+t = zeros(2)
 
 @info "Loading ParaReal"
 _, t[1], _, _, _ = @timed begin
@@ -40,9 +40,6 @@ fine   = (prob) -> init(prob, ImplicitEuler(), dt=δt, adaptive=false)
 alg = ParaRealAlgorithm(coarse, fine)
 
 @info "Starting solver"
-_, t[2], _, _, _ = @timed sols, conns = solve(prob, alg, maxiters=5)
+_, t[2], _, _, _ = @timed sol = solve(prob, alg, maxiters=5)
 @info "... took $(t[2])"
-@info "Waiting for solution"
-_, t[3], _, _, _ = @timed _fetched = map(fetch, sols)
-@info "... took $(t[3])"
 
