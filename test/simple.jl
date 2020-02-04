@@ -17,14 +17,12 @@
     verbose && @info "Computing reference solution using fine solver"
     ref = solve!(fine(prob))
 
-    verbose && @info "Starting ParaReal solver"
+    verbose && @info "Solving using ParaReal solver"
     kwargs = (maxiters = 7,
               workers = workers()[1:10])
-    results_refs, conns = solve(prob, alg; kwargs...)
-    verbose && @info "Waiting for solution ..."
-    last_niters, last_sol = fetch(results_refs[end])
+    sol = solve(prob, alg; kwargs...)
 
-    @test isapprox(last_sol[end], ref[end], rtol=1e-3)
-    @test_broken last_niters < 6
+    @test isapprox(sol[end], ref[end], rtol=1e-3)
+    @test_broken sol.retcode == :Success
 end
 

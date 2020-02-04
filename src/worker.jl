@@ -1,4 +1,5 @@
 using LinearAlgebra: norm
+using DiffEqBase: solution_new_retcode
 
 # TODO: put into worker setup / config:
 # step, n,
@@ -95,8 +96,6 @@ function _solve(prob::ODEProblem{uType},
     if converged
         # If this worker converged, there is no need to pass on the next/same
         # solution again.
-        # TODO: tell previous workers that no more solutions will be
-        # read from `prev`. See issue #3.
         close(next)
     else
         @debug "Previous worker converged; sending last fine solution" step niters
@@ -106,5 +105,6 @@ function _solve(prob::ODEProblem{uType},
         close(next)
     end
 
-    niters, fine_sol
+    retcode = niters > maxiters ? :MaxIters : :Success
+    solution_new_retcode(fine_sol, retcode)
 end
