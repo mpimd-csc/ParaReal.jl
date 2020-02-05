@@ -1,13 +1,13 @@
 using Distributed
 
-import DiffEqBase: solve
+import DiffEqBase: __solve
 using DiffEqBase: build_solution
 
-function DiffEqBase.solve(prob::ODEProblem,
-                          alg::ParaRealAlgorithm;
-                          workers = workers(),
-                          maxiters = 10,
-                         )
+function DiffEqBase.__solve(prob::ODEProblem,
+                            alg::ParaRealAlgorithm;
+                            workers = workers(),
+                            maxiters = 10,
+                           )
 
     issubset(workers, procs()) || error("Unknown worker ids in `$workers`, no subset of `$(procs())`")
 
