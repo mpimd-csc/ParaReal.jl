@@ -1,5 +1,6 @@
 using Test, Distributed
 using ParaReal
+using ParaReal: local_tspan
 
 nprocs() == 1 && addprocs(10)
 

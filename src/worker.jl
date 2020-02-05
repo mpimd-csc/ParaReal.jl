@@ -31,9 +31,7 @@ function _solve(prob::ODEProblem{uType},
                ) where uType
 
     # Initialize local problem instance
-    t0, tf = prob.tspan
-    tspan = (((n-step+1)*t0 + (step-1)*tf)/n,
-             ((n-step)  *t0 + (step)  *tf)/n)
+    tspan = local_tspan(step, n, prob.tspan)
     prob = remake(prob, tspan=tspan) # copies
 
     # Initialize solver algorithms
