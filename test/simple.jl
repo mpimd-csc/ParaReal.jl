@@ -18,11 +18,11 @@
     ref = solve!(fine(prob))
 
     verbose && @info "Solving using ParaReal solver"
-    kwargs = (maxiters = 7,
+    kwargs = (maxiters = 8,
               workers = workers()[1:10])
     sol = solve(prob, alg; kwargs...)
 
     @test isapprox(sol[end], ref[end], rtol=1e-3)
-    @test_broken sol.retcode == :Success
+    @test sol.retcode == :Success
 end
 
