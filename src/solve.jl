@@ -1,5 +1,5 @@
 using Distributed: workers, @spawnat, RemoteChannel, procs
-using Base.Threads: nthreads, @spawn
+using Base.Threads: nthreads, @threads
 using Base.Iterators: countfrom, repeat
 
 import DiffEqBase: solve
