@@ -2,6 +2,8 @@ include("setup.jl")
 
 @time @testset "ParaReal.jl" begin
     include("utils.jl")
-    include("simple.jl")
+    @testset "simple (Bargo2009)" begin
+        include("simple.jl")
+    end
 end
 
