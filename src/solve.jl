@@ -2,6 +2,7 @@ using Distributed: workers, @spawnat, RemoteChannel, procs
 using Base.Threads: nthreads, @threads
 using Base.Iterators: countfrom, repeat
 
+using DiffEqBase
 import DiffEqBase: solve
 using DiffEqBase: build_solution
 
