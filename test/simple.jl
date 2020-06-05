@@ -28,6 +28,8 @@ sol1 = solve(prob, alg;
 @test isapprox(sol1[end], ref[end], rtol=1e-3)
 @test sol1.retcode == :Success
 
+if Base.VERSION >= v"1.3"
+
 verbose && @info "Solving using 2 threads per worker"
 sol2 = solve(prob, alg;
              ws = workers()[1:5],
@@ -36,3 +38,4 @@ sol2 = solve(prob, alg;
 @test isapprox(sol2[end], ref[end], rtol=1e-3)
 @test sol2.retcode == :Success
 
+end

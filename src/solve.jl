@@ -10,17 +10,19 @@ function DiffEqBase.solve(
     prob::ODEProblem,
     alg::ParaRealAlgorithm;
     ws = workers(),
-    nt = nthreads(),
+    nt = Base.VERSION >= v"1.3" ? nthreads() : 1,
     maxiters = 10,
     )
 
     issubset(ws, procs()) || error("Unknown worker ids in `$workers`, no subset of `$(procs())`")
+    Base.VERSION >= v"1.3" || nt == 1 || error("Multiple threads/tasks per worker require Julia v1.3")
 
     uType = typeof(prob.u0)
     uChannel = Channel{uType}
     uRemoteChannel = RemoteChannel{uChannel}
     createchan = () -> uChannel(1)
 
+    @debug "Setting up connections"
     # Create connections between the pipeline stages:
     nsteps = length(ws) * nt
     conns = Vector{uRemoteChannel}(undef, nsteps+1)
@@ -38,38 +40,41 @@ function DiffEqBase.solve(
     # Create a connection back home for the local solutions:
     results = RemoteChannel(() -> Channel(nsteps))
 
+    @debug "Starting worker tasks"
     # Wire up the pipeline:
-    tasks = asyncmap(ws, countfrom(1, nt)) do w, i
-        _conns = @view conns[i:i+nt]
-        @spawnat w begin
-            @threads for j in 1:nt
-                in = _conns[j]
-                out = _conns[j+1]
-                _solve(prob, alg,
-                       j+i-1, nsteps,
-                       in, out,
-                       results;
-                       maxiters=maxiters)
+    if Base.VERSION >= v"1.3"
+        # TODO: use `@spawn` instead of `@threads for` for better composability.
+        # For as long as tasks can't jump between threads, `@spawn` is quiet unreliable
+        # in populating different threads. Therefore we stick to `@threads` for now.
+        # Once the following PR is merged (maybe Julia v1.6), nested calls to `@threads`
+        # will be parallelized as well.
+        #
+        # https://github.com/JuliaLang/julia/pull/36131#pullrequestreview-425193294
+        tasks = asyncmap(ws, countfrom(1, nt)) do w, i
+            _conns = @view conns[i:i+nt]
+            @spawnat w begin
+                @threads for j in 1:nt
+                    in = _conns[j]
+                    out = _conns[j+1]
+                    _solve(prob, alg,
+                           j+i-1, nsteps,
+                           in, out,
+                           results;
+                           maxiters=maxiters)
+                end
             end
         end
+    else
+        tasks = asyncmap(enumerate(ws)) do i, w
+            @spawnat w _solve(prob, alg,
+                              i, nsteps,
+                              conns[i], conns[i+1],
+                              results;
+                              maxiters=maxiters)
+        end
     end
-    #=
-    # Wire up the pipeline:
-    tasks = asyncmap(repeat(ws, inner=nt),
-                     countfrom(1)) do w, i
-        in = conns[i]
-        out = conns[i+1]
-        # Create a task to hop off thread 1.
-        @spawnat w wait(
-            @spawn _solve(prob, alg,
-                          i, nsteps,
-                          in, out,
-                          results;
-                          maxiters=maxiters))
-    end
-    =#
 
-    @info "Sending initial value"
+    @debug "Sending initial value"
     # Kick off the pipeline:
     u0 = prob.u0
     firstchan = first(conns)
@@ -79,7 +84,7 @@ function DiffEqBase.solve(
     # Make sure there were no errors:
     wait.(tasks)
 
-    @info "Collecting"
+    @debug "Collecting local solutions"
     # Collect local solutions. Sorting them shouldn't be necessary,
     # but as there is networking involved, we're rather safe than sorry:
     sols = Vector(undef, nsteps)
@@ -88,7 +93,7 @@ function DiffEqBase.solve(
         sols[step] = sol
     end
 
-    @info "Assembling"
+    @debug "Reassembling global solution"
     # Assemble global solution:
     tType = typeof(prob.tspan[1])
     ts = Vector{tType}(undef, 0)
