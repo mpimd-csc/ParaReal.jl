@@ -65,7 +65,7 @@ function DiffEqBase.solve(
             end
         end
     else
-        tasks = asyncmap(enumerate(ws)) do i, w
+        tasks = asyncmap(enumerate(ws)) do (i, w)
             @spawnat w _solve(prob, alg,
                               i, nsteps,
                               conns[i], conns[i+1],
