@@ -1,4 +1,4 @@
-using Test, Distributed
+using Test, Distributed, Base.Threads
 using ParaReal
 using ParaReal: local_tspan
 

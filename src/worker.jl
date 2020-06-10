@@ -25,7 +25,8 @@ function _solve(prob::ODEProblem{uType},
                 step::Integer,
                 n::Integer,
                 prev::RemoteChannel{<:AbstractChannel{uType}},
-                next::RemoteChannel{<:AbstractChannel{uType}};
+                next::RemoteChannel{<:AbstractChannel{uType}},
+                result::RemoteChannel;
                 tol = 1e-5,
                 maxiters = 100,
                ) where uType
@@ -71,7 +72,7 @@ function _solve(prob::ODEProblem{uType},
             alg.update!(correction, coarse_u, fine_u, coarse_u_old)
             diff = norm(correction - fine_u, 1) / norm(correction, 1)
             if diff < tol
-                @debug "Worker converged" step niters
+                @debug "Worker $step/$n converged after $niters/$maxiters iterations"
                 converged = true
                 break
             else
@@ -86,23 +87,22 @@ function _solve(prob::ODEProblem{uType},
     end
 
     if niters > maxiters
-        @warn "Worker $step reached maximum number of iterations: $maxiters"
+        @warn "Worker $step/$n reached maximum number of iterations: $maxiters"
         #close(next)
         #return maxiters == 1 ? coarse_sol : fine_sol
     end
 
-    if converged
-        # If this worker converged, there is no need to pass on the next/same
-        # solution again.
-        close(next)
-    else
-        @debug "Previous worker converged; sending last fine solution" step niters
-        # If instead the previous did converge, hand on the last fine solution
-        # as the converged solution for this worker.
-        put!(next, fine_u)
-        close(next)
-    end
+    # If this worker converged, there is no need to pass on the
+    # next/same solution again. If, instead, the previous worker
+    # converged, closing `prev`, send the last fine solution to `next`
+    # as the (eventually) converged solution of this worker.
+    converged || step == n || put!(next, fine_u)
+    step == n || close(next)
 
     retcode = niters > maxiters ? :MaxIters : :Success
-    solution_new_retcode(fine_sol, retcode)
+    sol = solution_new_retcode(fine_sol, retcode)
+    @debug "Worker $step/$n sending results"
+    put!(result, (step, sol))
+    @debug "Worker $step/$n finished"
+    nothing
 end
