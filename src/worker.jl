@@ -20,7 +20,7 @@ using DiffEqBase: solution_new_retcode
 * `prev::AbstractChannel` where to get new `u0`-values from
 * `next::AbstractChannel` where to put `u0`-values for the next pipeline step
 """
-function _solve(prob::ODEProblem{uType},
+function _solve(prob::DiffEqBase.DEProblem,
                 alg::ParaRealAlgorithm,
                 step::Integer,
                 n::Integer,

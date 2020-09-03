@@ -7,7 +7,7 @@ import DiffEqBase: solve
 using DiffEqBase: build_solution
 
 function DiffEqBase.solve(
-    prob::ODEProblem,
+    prob::DiffEqBase.DEProblem,
     alg::ParaRealAlgorithm;
     ws = workers(),
     nt = Base.VERSION >= v"1.3" ? nthreads() : 1,
