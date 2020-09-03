@@ -13,12 +13,12 @@ tspan = (0., 100.)
 prob = ODEProblem(f, u0, tspan)
 
 verbose && @info "Creating algorithm instance"
-coarse = (prob) -> init(prob, ImplicitEuler(), dt=1.0, adaptive=false)
-fine   = (prob) -> init(prob, ImplicitEuler(), dt=0.1, adaptive=false)
+coarse = prob -> solve(prob, ImplicitEuler(), dt=1.0, adaptive=false)
+fine   = prob -> solve(prob, ImplicitEuler(), dt=0.1, adaptive=false)
 alg = ParaRealAlgorithm(coarse, fine)
 
 verbose && @info "Computing reference solution using fine solver"
-ref = solve!(fine(prob))
+ref = fine(prob)
 
 verbose && @info "Solving using 1 thread per worker"
 sol1 = solve(prob, alg;

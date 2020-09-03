@@ -33,11 +33,6 @@ function _solve(prob::ODEProblem{uType},
 
     # Initialize local problem instance
     tspan = local_tspan(step, n, prob.tspan)
-    prob = remake(prob, tspan=tspan) # copies
-
-    # Initialize solver algorithms
-    coarse_integrator = alg.coarse(prob)
-    fine_integrator = alg.fine(prob)
 
     # Allocate buffers
     coarse_u_old = similar(prob.u0)
@@ -52,6 +47,7 @@ function _solve(prob::ODEProblem{uType},
     niters = 0
     for u0 in prev
         niters += 1
+        prob = remake(prob, u0=u0, tspan=tspan) # copies :-(
 
         # Abort if maximum number of iterations is reached.
         niters > maxiters && break
@@ -60,8 +56,7 @@ function _solve(prob::ODEProblem{uType},
         niters > 1 && copyto!(coarse_u_old, coarse_u)
 
         # Compute coarse solution
-        reinit!(coarse_integrator, u0)
-        coarse_sol = solve!(coarse_integrator)
+        coarse_sol = alg.coarse(prob)
         coarse_u = coarse_sol[end]
 
         # Hand correction of coarse solution on to the next workers.
@@ -81,8 +76,7 @@ function _solve(prob::ODEProblem{uType},
         end
 
         # Compute fine solution
-        reinit!(fine_integrator, u0)
-        fine_sol = solve!(fine_integrator)
+        fine_sol = alg.fine(prob)
         fine_u = fine_sol[end]
     end
 
