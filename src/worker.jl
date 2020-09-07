@@ -1,5 +1,5 @@
 using LinearAlgebra: norm
-using DiffEqBase: solution_new_retcode
+using DiffEqBase: solution_new_retcode, remake
 
 # TODO: put into worker setup / config:
 # step, n,
@@ -56,8 +56,8 @@ function _solve(prob::DiffEqBase.DEProblem,
         niters > 1 && copyto!(coarse_u_old, coarse_u)
 
         # Compute coarse solution
-        coarse_sol = alg.coarse(prob)
-        coarse_u = coarse_sol[end]
+        coarse_sol = csolve(prob, alg)
+        coarse_u = value(coarse_sol)
 
         # Hand correction of coarse solution on to the next workers.
         # Note that there is no correction to be done in the first iteration.
@@ -76,8 +76,8 @@ function _solve(prob::DiffEqBase.DEProblem,
         end
 
         # Compute fine solution
-        fine_sol = alg.fine(prob)
-        fine_u = fine_sol[end]
+        fine_sol = fsolve(prob, alg)
+        fine_u = value(fine_sol)
     end
 
     if niters > maxiters
@@ -96,7 +96,33 @@ function _solve(prob::DiffEqBase.DEProblem,
     retcode = niters > maxiters ? :MaxIters : :Success
     sol = solution_new_retcode(fine_sol, retcode)
     @debug "Worker $step/$n sending results"
-    put!(result, (step, sol))
+    put!(result, (step, sol)) # Redo? return via `return` instead of channel
     @debug "Worker $step/$n finished"
     nothing
 end
+
+"""
+    csolve(prob, alg) -> csol
+
+Compute the low-accurary / cheap / coarse solution `csol` of the given problem `prob`.
+"""
+function csolve end
+
+"""
+    fsolve(prob, alg) -> fsol
+
+Compute the high-accurary / fine solution `fsol` of the given problem `prob`.
+"""
+function fsolve end
+
+csolve(prob, alg::ParaRealAlgorithm) = alg.coarse(prob)
+fsolve(prob, alg::ParaRealAlgorithm) = alg.fine(prob)
+
+"""
+    value(sol) -> y
+
+Extract the initial value `y` for the next ParaReal iteration.
+"""
+function value end
+
+value(sol::DiffEqBase.DESolution) = sol[end]
