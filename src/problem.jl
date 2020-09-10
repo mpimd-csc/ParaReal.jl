@@ -11,4 +11,4 @@ initialvalue(prob) = prob.u0
 
 Create a new problem having the initial value `u0` and time span `tspan`.
 """
-remake(prob::DiffEqBase.DEProblem; u0, tspan) = DiffEqBase.remake(prob; u0, tspan)
+remake(prob::DiffEqBase.DEProblem; u0, tspan) = DiffEqBase.remake(prob; u0=u0, tspan=tspan)
