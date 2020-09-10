@@ -58,7 +58,7 @@ function _solve(prob::DiffEqBase.DEProblem,
 
         # Compute coarse solution
         coarse_sol = csolve(prob, alg)
-        coarse_u = value(coarse_sol)
+        coarse_u = nextvalue(coarse_sol)
 
         # Hand correction of coarse solution on to the next workers.
         # Note that there is no correction to be done in the first iteration.
@@ -78,7 +78,7 @@ function _solve(prob::DiffEqBase.DEProblem,
 
         # Compute fine solution
         fine_sol = fsolve(prob, alg)
-        fine_u = value(fine_sol)
+        fine_u = nextvalue(fine_sol)
     end
 
     if niters > maxiters
@@ -120,10 +120,9 @@ csolve(prob, alg::ParaRealAlgorithm) = alg.coarse(prob)
 fsolve(prob, alg::ParaRealAlgorithm) = alg.fine(prob)
 
 """
-    value(sol) -> y
+    nextvalue(sol)
 
-Extract the initial value `y` for the next ParaReal iteration.
+Extract the initial value for the next ParaReal iteration.
+Defaults to `sol[end]`.
 """
-function value end
-
-value(sol::DiffEqBase.DESolution) = sol[end]
+nextvalue(sol) = sol[end]
