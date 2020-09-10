@@ -3,6 +3,8 @@ module ParaReal
 import DiffEqBase
 
 include("types.jl")
+include("problem.jl")
+
 include("solve.jl")
 include("worker.jl")
 

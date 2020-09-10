@@ -35,8 +35,9 @@ function _solve(prob::DiffEqBase.DEProblem,
     tspan = local_tspan(step, n, prob.tspan)
 
     # Allocate buffers
-    coarse_u_old = similar(prob.u0)
-    correction = similar(prob.u0)
+    u = initialvalue(prob)
+    coarse_u_old = similar(u)
+    correction = similar(u)
 
     # Define variables to extend their scope
     coarse_u = nothing

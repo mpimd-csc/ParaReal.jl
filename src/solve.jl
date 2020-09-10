@@ -13,7 +13,8 @@ function DiffEqBase.solve(
     issubset(ws, procs()) || error("Unknown worker ids in `$workers`, no subset of `$(procs())`")
     Base.VERSION >= v"1.3" || nt == 1 || error("Multiple threads/tasks per worker require Julia v1.3")
 
-    uType = typeof(prob.u0)
+    u0 = initialvalue(prob)
+    uType = typeof(u0)
     uChannel = Channel{uType}
     uRemoteChannel = RemoteChannel{uChannel}
     createchan = () -> uChannel(1)
@@ -72,7 +73,6 @@ function DiffEqBase.solve(
 
     @debug "Sending initial value"
     # Kick off the pipeline:
-    u0 = prob.u0
     firstchan = first(conns)
     put!(firstchan, u0)
     close(firstchan)
@@ -104,7 +104,7 @@ end
 
 function assemble_solution(prob, alg, sols)
     tType = typeof(prob.tspan[1])
-    uType = typeof(prob.u0)
+    uType = typeof(initialvalue(prob))
 
     ts = Vector{tType}(undef, 0)
     us = Vector{uType}(undef, 0)
