@@ -2,8 +2,10 @@ using Distributed: workers, @spawnat, RemoteChannel, procs
 using Base.Threads: nthreads, @threads
 using Base.Iterators: countfrom, repeat
 
-function DiffEqBase.solve(
-    prob::DiffEqBase.DEProblem,
+DiffEqBase.solve(prob::DiffEqBase.DEProblem, alg::ParaRealAlgorithm; kwargs...) = solve(prob, alg; kwargs...)
+
+function solve(
+    prob,
     alg::ParaRealAlgorithm;
     ws = workers(),
     nt = Base.VERSION >= v"1.3" ? nthreads() : 1,

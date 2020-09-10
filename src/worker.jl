@@ -1,5 +1,5 @@
 using LinearAlgebra: norm
-using DiffEqBase: solution_new_retcode, remake
+using DiffEqBase: solution_new_retcode
 
 # TODO: put into worker setup / config:
 # step, n,
@@ -20,7 +20,7 @@ using DiffEqBase: solution_new_retcode, remake
 * `prev::AbstractChannel` where to get new `u0`-values from
 * `next::AbstractChannel` where to put `u0`-values for the next pipeline step
 """
-function _solve(prob::DiffEqBase.DEProblem,
+function _solve(prob,
                 alg::ParaRealAlgorithm,
                 step::Integer,
                 n::Integer,
