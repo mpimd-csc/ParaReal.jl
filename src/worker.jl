@@ -95,7 +95,7 @@ function _solve(prob::DiffEqBase.DEProblem,
     step == n || close(next)
 
     retcode = niters > maxiters ? :MaxIters : :Success
-    sol = solution_new_retcode(fine_sol, retcode)
+    sol = LocalSolution(fine_sol, retcode)
     @debug "Worker $step/$n sending results"
     put!(result, (step, sol)) # Redo? return via `return` instead of channel
     @debug "Worker $step/$n finished"

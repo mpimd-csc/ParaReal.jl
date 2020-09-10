@@ -81,39 +81,8 @@ function DiffEqBase.solve(
     wait.(tasks)
 
     @debug "Collecting local solutions"
-    sols = collect_solutions(results, nsteps)
+    sol = collect_solutions(results, nsteps)
 
     @debug "Reassembling global solution"
-    # Assemble global solution:
-    sol = assemble_solution(prob, alg, sols)
-    return sol
-end
-
-function collect_solutions(results, nsteps)
-    # Collect local solutions. Sorting them shouldn't be necessary,
-    # but as there is networking involved, we're rather safe than sorry:
-    step, sol = take!(results)
-    sols = Vector{typeof(sol)}(undef, nsteps)
-    sols[step] = sol
-    for _ in 1:nsteps-1
-        step, sol = take!(results)
-        sols[step] = sol
-    end
-    sols
-end
-
-function assemble_solution(prob, alg, sols)
-    tType = typeof(prob.tspan[1])
-    uType = typeof(initialvalue(prob))
-
-    ts = Vector{tType}(undef, 0)
-    us = Vector{uType}(undef, 0)
-    retcodes = map(sols) do sol
-        append!(ts, sol.t)
-        append!(us, sol.u)
-        sol.retcode
-    end
-
-    retcode = all(==(:Success), retcodes) ? :Success : :MaxIters
-    DiffEqBase.build_solution(prob, alg, ts, us, retcode=retcode)
+    return assemble_solution(prob, alg, sol)
 end
