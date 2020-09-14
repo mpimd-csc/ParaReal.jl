@@ -20,7 +20,7 @@ using DiffEqBase: solution_new_retcode
 * `prev::AbstractChannel` where to get new `u0`-values from
 * `next::AbstractChannel` where to put `u0`-values for the next pipeline step
 """
-function _solve(prob::ODEProblem{uType},
+function _solve(prob,
                 alg::ParaRealAlgorithm,
                 step::Integer,
                 n::Integer,
@@ -33,15 +33,11 @@ function _solve(prob::ODEProblem{uType},
 
     # Initialize local problem instance
     tspan = local_tspan(step, n, prob.tspan)
-    prob = remake(prob, tspan=tspan) # copies
-
-    # Initialize solver algorithms
-    coarse_integrator = alg.coarse(prob)
-    fine_integrator = alg.fine(prob)
 
     # Allocate buffers
-    coarse_u_old = similar(prob.u0)
-    correction = similar(prob.u0)
+    u = initialvalue(prob)
+    coarse_u_old = similar(u)
+    correction = similar(u)
 
     # Define variables to extend their scope
     coarse_u = nothing
@@ -52,6 +48,7 @@ function _solve(prob::ODEProblem{uType},
     niters = 0
     for u0 in prev
         niters += 1
+        prob = remake(prob, u0=u0, tspan=tspan) # copies :-(
 
         # Abort if maximum number of iterations is reached.
         niters > maxiters && break
@@ -60,9 +57,8 @@ function _solve(prob::ODEProblem{uType},
         niters > 1 && copyto!(coarse_u_old, coarse_u)
 
         # Compute coarse solution
-        reinit!(coarse_integrator, u0)
-        coarse_sol = solve!(coarse_integrator)
-        coarse_u = coarse_sol[end]
+        coarse_sol = csolve(prob, alg)
+        coarse_u = nextvalue(coarse_sol)
 
         # Hand correction of coarse solution on to the next workers.
         # Note that there is no correction to be done in the first iteration.
@@ -81,9 +77,8 @@ function _solve(prob::ODEProblem{uType},
         end
 
         # Compute fine solution
-        reinit!(fine_integrator, u0)
-        fine_sol = solve!(fine_integrator)
-        fine_u = fine_sol[end]
+        fine_sol = fsolve(prob, alg)
+        fine_u = nextvalue(fine_sol)
     end
 
     if niters > maxiters
@@ -100,9 +95,34 @@ function _solve(prob::ODEProblem{uType},
     step == n || close(next)
 
     retcode = niters > maxiters ? :MaxIters : :Success
-    sol = solution_new_retcode(fine_sol, retcode)
+    sol = LocalSolution(fine_sol, retcode)
     @debug "Worker $step/$n sending results"
-    put!(result, (step, sol))
+    put!(result, (step, sol)) # Redo? return via `return` instead of channel
     @debug "Worker $step/$n finished"
     nothing
 end
+
+"""
+    csolve(prob, alg) -> csol
+
+Compute the low-accurary / cheap / coarse solution `csol` of the given problem `prob`.
+"""
+function csolve end
+
+"""
+    fsolve(prob, alg) -> fsol
+
+Compute the high-accurary / fine solution `fsol` of the given problem `prob`.
+"""
+function fsolve end
+
+csolve(prob, alg::ParaRealAlgorithm) = alg.coarse(prob)
+fsolve(prob, alg::ParaRealAlgorithm) = alg.fine(prob)
+
+"""
+    nextvalue(sol)
+
+Extract the initial value for the next ParaReal iteration.
+Defaults to `sol[end]`.
+"""
+nextvalue(sol) = sol[end]

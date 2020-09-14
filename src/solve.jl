@@ -2,12 +2,10 @@ using Distributed: workers, @spawnat, RemoteChannel, procs
 using Base.Threads: nthreads, @threads
 using Base.Iterators: countfrom, repeat
 
-using DiffEqBase
-import DiffEqBase: solve
-using DiffEqBase: build_solution
+DiffEqBase.solve(prob::DiffEqBase.DEProblem, alg::ParaRealAlgorithm; kwargs...) = solve(prob, alg; kwargs...)
 
-function DiffEqBase.solve(
-    prob::ODEProblem,
+function solve(
+    prob,
     alg::ParaRealAlgorithm;
     ws = workers(),
     nt = Base.VERSION >= v"1.3" ? nthreads() : 1,
@@ -17,7 +15,8 @@ function DiffEqBase.solve(
     issubset(ws, procs()) || error("Unknown worker ids in `$workers`, no subset of `$(procs())`")
     Base.VERSION >= v"1.3" || nt == 1 || error("Multiple threads/tasks per worker require Julia v1.3")
 
-    uType = typeof(prob.u0)
+    u0 = initialvalue(prob)
+    uType = typeof(u0)
     uChannel = Channel{uType}
     uRemoteChannel = RemoteChannel{uChannel}
     createchan = () -> uChannel(1)
@@ -76,7 +75,6 @@ function DiffEqBase.solve(
 
     @debug "Sending initial value"
     # Kick off the pipeline:
-    u0 = prob.u0
     firstchan = first(conns)
     put!(firstchan, u0)
     close(firstchan)
@@ -85,25 +83,8 @@ function DiffEqBase.solve(
     wait.(tasks)
 
     @debug "Collecting local solutions"
-    # Collect local solutions. Sorting them shouldn't be necessary,
-    # but as there is networking involved, we're rather safe than sorry:
-    sols = Vector(undef, nsteps)
-    for _ in 1:nsteps
-        step, sol = take!(results)
-        sols[step] = sol
-    end
+    sol = collect_solutions(results, nsteps)
 
     @debug "Reassembling global solution"
-    # Assemble global solution:
-    tType = typeof(prob.tspan[1])
-    ts = Vector{tType}(undef, 0)
-    us = Vector{uType}(undef, 0)
-    retcodes = map(sols) do sol
-        append!(ts, sol.t)
-        append!(us, sol.u)
-        sol.retcode
-    end
-
-    retcode = all(==(:Success), retcodes) ? :Success : :MaxIters
-    build_solution(prob, alg, ts, us, retcode=retcode)
+    return assemble_solution(prob, alg, sol)
 end
