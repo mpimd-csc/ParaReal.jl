@@ -83,8 +83,6 @@ function _solve(prob,
 
     if niters > maxiters
         @warn "Worker $step/$n reached maximum number of iterations: $maxiters"
-        #close(next)
-        #return maxiters == 1 ? coarse_sol : fine_sol
     end
 
     # If this worker converged, there is no need to pass on the

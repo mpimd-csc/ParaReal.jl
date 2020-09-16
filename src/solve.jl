@@ -45,10 +45,6 @@ function solve(
         # TODO: use `@spawn` instead of `@threads for` for better composability.
         # For as long as tasks can't jump between threads, `@spawn` is quiet unreliable
         # in populating different threads. Therefore we stick to `@threads` for now.
-        # Once the following PR is merged (maybe Julia v1.6), nested calls to `@threads`
-        # will be parallelized as well.
-        #
-        # https://github.com/JuliaLang/julia/pull/36131#pullrequestreview-425193294
         tasks = asyncmap(ws, countfrom(1, nt)) do w, i
             _conns = @view conns[i:i+nt]
             @spawnat w begin
