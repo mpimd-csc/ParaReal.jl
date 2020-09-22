@@ -1,17 +1,35 @@
 module ParaReal
 
-import DiffEqBase
+import Base.Threads,
+       DiffEqBase,
+       Distributed
+
+using Base.Iterators: countfrom, repeat
+using Base.Threads: nthreads, @threads
+using Distributed: Future,
+                   RemoteChannel,
+                   procs,
+                   remotecall,
+                   workers,
+                   @fetchfrom,
+                   @spawnat
+using LinearAlgebra: norm
+using UnPack: @unpack
+
+export ParaRealAlgorithm
+
+const T = Base.Threads
+const D = Distributed
 
 include("types.jl")
+include("stages.jl")
+include("pipeline.jl")
+
 include("solution.jl")
 include("problem.jl")
-
 include("solve.jl")
-include("worker.jl")
 
 include("utils.jl")
 include("compat.jl")
-
-export ParaRealAlgorithm
 
 end # module

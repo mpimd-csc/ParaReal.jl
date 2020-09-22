@@ -22,7 +22,10 @@ struct GlobalSolution{S}
     end
 end
 
-function collect_solutions(results, nsteps)
+function collect_solutions(pipeline::Pipeline)
+    @unpack results, workers = pipeline
+    nsteps = length(workers)
+
     # Collect local solutions. Sorting them shouldn't be necessary,
     # but as there is networking involved, we're rather safe than sorry:
     step, sol = take!(results)
@@ -60,3 +63,11 @@ function assemble_solution(
 
     DiffEqBase.build_solution(prob, alg, ts, us, retcode=gsol.retcode)
 end
+
+"""
+    nextvalue(sol)
+
+Extract the initial value for the next ParaReal iteration.
+Defaults to `sol[end]`.
+"""
+nextvalue(sol) = sol[end]

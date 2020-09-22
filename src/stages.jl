@@ -1,38 +1,15 @@
-using LinearAlgebra: norm
-using DiffEqBase: solution_new_retcode
-
-# TODO: put into worker setup / config:
-# step, n,
-# prev, next,
-# tol
-#
-# Maybe also integrate worker state (mutable struct)
-
-"""
-    _solve(step, n, prob, prev, next)
-
-# Arguments
-
-* `prob::ODEProblem` global problem to be solved
-* `alg::ParaRealAlgorithm`
-* `step::Integer` current step in the pipeline
-* `n::Integer` total number of steps in the pipeline
-* `prev::AbstractChannel` where to get new `u0`-values from
-* `next::AbstractChannel` where to put `u0`-values for the next pipeline step
-"""
-function _solve(prob,
+function execute_stage(prob,
                 alg::ParaRealAlgorithm,
-                step::Integer,
-                n::Integer,
-                prev::RemoteChannel{<:AbstractChannel{uType}},
-                next::RemoteChannel{<:AbstractChannel{uType}},
-                result::RemoteChannel;
+                config::StageConfig;
+                maxiters = 10,
                 tol = 1e-5,
-                maxiters = 100,
-               ) where uType
+               )
+
+    @unpack step, nsteps, prev, next, results = config
+    finalstage = step == nsteps
 
     # Initialize local problem instance
-    tspan = local_tspan(step, n, prob.tspan)
+    tspan = local_tspan(step, nsteps, prob.tspan)
 
     # Allocate buffers
     u = initialvalue(prob)
@@ -46,8 +23,10 @@ function _solve(prob,
 
     converged = false
     niters = 0
+    @debug "Waiting for data" step pid=D.myid() tid=T.threadid()
     for u0 in prev
         niters += 1
+        @debug "Received new initial value" step niters
         prob = remake(prob, u0=u0, tspan=tspan) # copies :-(
 
         # Abort if maximum number of iterations is reached.
@@ -63,16 +42,16 @@ function _solve(prob,
         # Hand correction of coarse solution on to the next workers.
         # Note that there is no correction to be done in the first iteration.
         if niters == 1
-            step == n || put!(next, coarse_u)
+            finalstage || put!(next, coarse_u)
         else
             alg.update!(correction, coarse_u, fine_u, coarse_u_old)
             diff = norm(correction - fine_u, 1) / norm(correction, 1)
             if diff < tol
-                @debug "Worker $step/$n converged after $niters/$maxiters iterations"
+                @debug "Converged successfully" step niters
                 converged = true
                 break
             else
-                step == n || put!(next, correction)
+                finalstage || put!(next, correction)
             end
         end
 
@@ -82,21 +61,21 @@ function _solve(prob,
     end
 
     if niters > maxiters
-        @warn "Worker $step/$n reached maximum number of iterations: $maxiters"
+        @warn "Reached reached maximum number of iterations: $maxiters" step
     end
 
     # If this worker converged, there is no need to pass on the
     # next/same solution again. If, instead, the previous worker
     # converged, closing `prev`, send the last fine solution to `next`
     # as the (eventually) converged solution of this worker.
-    converged || step == n || put!(next, fine_u)
-    step == n || close(next)
+    converged || finalstage || put!(next, fine_u)
+    finalstage || close(next)
 
     retcode = niters > maxiters ? :MaxIters : :Success
     sol = LocalSolution(fine_sol, retcode)
-    @debug "Worker $step/$n sending results"
-    put!(result, (step, sol)) # Redo? return via `return` instead of channel
-    @debug "Worker $step/$n finished"
+    @debug "Sending results" step
+    put!(results, (step, sol)) # Redo? return via `return` instead of channel
+    @debug "Finished" step niters
     nothing
 end
 
@@ -116,11 +95,3 @@ function fsolve end
 
 csolve(prob, alg::ParaRealAlgorithm) = alg.coarse(prob)
 fsolve(prob, alg::ParaRealAlgorithm) = alg.fine(prob)
-
-"""
-    nextvalue(sol)
-
-Extract the initial value for the next ParaReal iteration.
-Defaults to `sol[end]`.
-"""
-nextvalue(sol) = sol[end]

@@ -1,3 +1,5 @@
+using ParaReal: local_tspan
+
 @testset "local_tspan" begin
     @testset "Covering the original interval" begin
         n = 4
