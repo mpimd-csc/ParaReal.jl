@@ -31,7 +31,7 @@ fsolve = prob -> begin
     t0, tf = prob.tspan
     solve(prob, Euler(), dt=(tf-t0)/10)
 end
-alg = ParaRealAlgorithm(csolve, fsolve)
+alg = ParaReal.Algorithm(csolve, fsolve)
 
 # Assuming the stages of a pipeline are executed on different threads on each
 # of the workers, we should explicitly test for pipeline configurations that

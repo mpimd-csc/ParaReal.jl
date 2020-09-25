@@ -34,7 +34,7 @@ prob = SomeProblem(X0, tspan)
 
 verbose && @info "Solving SomeProblem"
 somesolver = prob -> SomeSolution([map(x->x+1, prob.X0)])
-alg = ParaRealAlgorithm(somesolver, somesolver)
+alg = ParaReal.Algorithm(somesolver, somesolver)
 ids = fill(first(workers()), 4)
 sol = ParaReal.solve(prob, alg, workers=ids)
 

@@ -1,5 +1,5 @@
 function execute_stage(prob,
-                alg::ParaRealAlgorithm,
+                alg::Algorithm,
                 config::StageConfig;
                 maxiters = 10,
                 tol = 1e-5,
@@ -93,5 +93,5 @@ Compute the high-accurary / fine solution `fsol` of the given problem `prob`.
 """
 function fsolve end
 
-csolve(prob, alg::ParaRealAlgorithm) = alg.coarse(prob)
-fsolve(prob, alg::ParaRealAlgorithm) = alg.fine(prob)
+csolve(prob, alg::Algorithm) = alg.coarse(prob)
+fsolve(prob, alg::Algorithm) = alg.fine(prob)

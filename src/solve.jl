@@ -1,8 +1,8 @@
-DiffEqBase.solve(prob::DiffEqBase.DEProblem, alg::ParaRealAlgorithm; kwargs...) = solve(prob, alg; kwargs...)
+DiffEqBase.solve(prob::DiffEqBase.DEProblem, alg::Algorithm; kwargs...) = solve(prob, alg; kwargs...)
 
 function solve(
     prob,
-    alg::ParaRealAlgorithm;
+    alg::Algorithm;
     workers = workers(),
     maxiters = 10,
     )

@@ -16,8 +16,6 @@ using Distributed: Future,
 using LinearAlgebra: norm
 using UnPack: @unpack
 
-export ParaRealAlgorithm
-
 const T = Base.Threads
 const D = Distributed
 

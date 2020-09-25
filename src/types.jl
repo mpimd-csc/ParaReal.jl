@@ -1,4 +1,4 @@
-struct ParaRealAlgorithm{CoarseAlgorithm,
+struct Algorithm{CoarseAlgorithm,
                          FineAlgorithm,
                          UpdateFunction,
                         } <: DiffEqBase.DEAlgorithm
@@ -7,7 +7,7 @@ struct ParaRealAlgorithm{CoarseAlgorithm,
     update!::UpdateFunction
 end
 
-ParaRealAlgorithm(coarse, fine) = ParaRealAlgorithm(coarse, fine, default_update!)
+Algorithm(coarse, fine) = Algorithm(coarse, fine, default_update!)
 
 function default_update!(y_new, y_coarse, y_fine, y_coarse_old)
     @. y_new = y_coarse+y_fine-y_coarse_old
