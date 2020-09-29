@@ -2,7 +2,7 @@ using Distributed, Test
 
 verbose = isinteractive()
 verbose && @info "Verifying setup"
-nprocs() < 3 && addprocs(3-nworkers())
+nprocs() < 3 && addprocs(3-nprocs())
 ws = workers()[1:2]
 
 using ParaReal, DifferentialEquations
@@ -11,9 +11,12 @@ using ParaReal, DifferentialEquations
 using ParaReal: init_pipeline,
                 start_pipeline!,
                 send_initial_value,
+                cancel_pipeline!,
+                wait_for_pipeline,
                 collect_solutions,
                 is_pipeline_started,
                 is_pipeline_done,
+                is_pipeline_canceled,
                 is_pipeline_failed
 
 verbose && @info "Creating problem instance"
@@ -68,4 +71,35 @@ n2one = repeat(ws, inner=2)
     sol = collect_solutions(pl)
     @test is_pipeline_done(pl)
     @test !is_pipeline_failed(pl)
+end
+
+delay = 5.0 # seconds
+expensive(f) = x -> (sleep(delay); f(x))
+expensive_alg = ParaReal.Algorithm(csolve, expensive(fsolve))
+
+function test_cancellation(before::Bool, timeout)
+    pl = init_pipeline(one2one)
+    start_pipeline!(pl, prob, expensive_alg, maxiters=10)
+    before && send_initial_value(pl, prob)
+    @test !is_pipeline_canceled(pl)
+
+    cancel_pipeline!(pl)
+    !before && send_initial_value(pl, prob)
+    @test is_pipeline_canceled(pl)
+
+    t = @elapsed wait_for_pipeline(pl)
+    @test t < timeout # pipeline did not complete; total runtime >= 2delay
+    @test is_pipeline_done(pl)
+    @test !is_pipeline_failed(pl)
+end
+
+@testset "Cancellation" begin
+    @testset "Before sending initial value" begin
+        verbose && @info "Testing cancellation before sending initial value"
+        test_cancellation(false, 1.0)
+    end
+    @testset "After sending initial value" begin
+        verbose && @info "Testing cancellation after sending initial value"
+        test_cancellation(true, delay+1.0)
+    end
 end

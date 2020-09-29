@@ -2,6 +2,7 @@ function init_pipeline(workers::Vector{Int})
     conns = map(RemoteChannel, workers)
     nsteps = length(workers)
     results = RemoteChannel(() -> Channel(nsteps))
+    ctx = CancelCtx()
     configs = Vector{StageConfig}(undef, nsteps)
 
     # Initialize first stages:
@@ -12,6 +13,7 @@ function init_pipeline(workers::Vector{Int})
                                  nsteps=nsteps,
                                  prev=prev,
                                  next=next,
+                                 ctx=ctx,
                                  results=results)
     end
 
@@ -23,10 +25,12 @@ function init_pipeline(workers::Vector{Int})
                                   nsteps=nsteps,
                                   prev=prev,
                                   next=next,
+                                  ctx=ctx,
                                   results=results)
 
     Pipeline(conns=conns,
              results=results,
+             ctx=ctx,
              workers=workers,
              configs=configs)
 end
@@ -48,6 +52,21 @@ function send_initial_value(pipeline::Pipeline, prob)
     close(c)
     nothing
 end
+
+"""
+    cancel_pipeline!(pl::Pipeline)
+
+Abandon all computations along the pipeline.
+Do not wait for all the stages to stop.
+"""
+cancel_pipeline!(pl::Pipeline) = cancel!(pl.ctx)
+
+"""
+    wait_for_pipeline(pl::Pipeline)
+
+Wait for all the pipeline stages to finish.
+"""
+wait_for_pipeline(pl::Pipeline) = foreach(wait, pl.tasks)
 
 """
     is_pipeline_started(pl::Pipeline) -> Bool
@@ -82,3 +101,10 @@ function is_pipeline_failed(pl::Pipeline)
     end
     return false
 end
+
+"""
+    is_pipeline_canceled(pl::Pipeline)
+
+Determine whether the pipeline had been canceled.
+"""
+is_pipeline_canceled(pl::Pipeline) = iscanceled(pl.ctx)

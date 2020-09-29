@@ -23,11 +23,13 @@ Base.@kwdef struct StageConfig
     prev::ValueChannel # where to get new `u0`-values from
     next::ValueChannel # where to put `u0`-values for the next pipeline step
     results::RemoteChannel # where to put the solution objects after convergence
+    ctx::CancelCtx
 end
 
 Base.@kwdef mutable struct Pipeline
     conns::Vector{ValueChannel}
     results::ValueChannel
+    ctx::CancelCtx
 
     workers::Vector{Int}
     configs::Vector{StageConfig}

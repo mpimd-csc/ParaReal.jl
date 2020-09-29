@@ -5,7 +5,7 @@ function execute_stage(prob,
                 tol = 1e-5,
                )
 
-    @unpack step, nsteps, prev, next, results = config
+    @unpack step, nsteps, prev, next, results, ctx = config
     finalstage = step == nsteps
 
     # Initialize local problem instance
@@ -24,6 +24,7 @@ function execute_stage(prob,
     converged = false
     niters = 0
     @debug "Waiting for data" step pid=D.myid() tid=T.threadid()
+    iscanceled(ctx) && return
     for u0 in prev
         niters += 1
         @debug "Received new initial value" step niters
@@ -38,6 +39,7 @@ function execute_stage(prob,
         # Compute coarse solution
         coarse_sol = csolve(prob, alg)
         coarse_u = nextvalue(coarse_sol)
+        iscanceled(ctx) && return
 
         # Hand correction of coarse solution on to the next workers.
         # Note that there is no correction to be done in the first iteration.
@@ -58,6 +60,7 @@ function execute_stage(prob,
         # Compute fine solution
         fine_sol = fsolve(prob, alg)
         fine_u = nextvalue(fine_sol)
+        iscanceled(ctx) && return
     end
 
     if niters > maxiters
