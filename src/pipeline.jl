@@ -1,3 +1,17 @@
+"""
+    init_pipeline(workers::Vector{Int})
+
+Initialize a pipeline to eventually run on the worker ids specified by
+`workers`. Do not start the tasks executing the pipeline stages.
+
+See also:
+
+* [`start_pipeline!`](@ref)
+* [`send_initial_value`](@ref)
+* [`wait_for_pipeline`](@ref)
+* [`collect_solutions`](@ref)
+* [`cancel_pipeline!`](@ref)
+"""
 function init_pipeline(workers::Vector{Int})
     conns = map(RemoteChannel, workers)
     nsteps = length(workers)
@@ -35,6 +49,19 @@ function init_pipeline(workers::Vector{Int})
              configs=configs)
 end
 
+"""
+    start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
+
+Create and schedule the tasks executing the pipeline stages.
+
+See also:
+
+* [`init_pipeline`](@ref)
+* [`send_initial_value`](@ref)
+* [`wait_for_pipeline`](@ref)
+* [`collect_solutions`](@ref)
+* [`cancel_pipeline!`](@ref)
+"""
 function start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
     is_pipeline_started(pipeline) && error("Pipeline already started")
     @unpack workers, configs = pipeline
@@ -45,6 +72,20 @@ function start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
     nothing
 end
 
+"""
+    send_initial_value(pipeline::Pipeline, prob)
+
+Kick off the ParaReal solver by sending the initial value of `prob`.
+Do not wait until all computations are done.
+
+See also:
+
+* [`init_pipeline`](@ref)
+* [`start_pipeline!`](@ref)
+* [`wait_for_pipeline`](@ref)
+* [`collect_solutions`](@ref)
+* [`cancel_pipeline!`](@ref)
+"""
 function send_initial_value(pipeline::Pipeline, prob)
     u0 = initialvalue(prob)
     c = first(pipeline.conns)
@@ -58,6 +99,14 @@ end
 
 Abandon all computations along the pipeline.
 Do not wait for all the stages to stop.
+
+See also:
+
+* [`init_pipeline`](@ref)
+* [`start_pipeline!`](@ref)
+* [`send_initial_value`](@ref)
+* [`wait_for_pipeline`](@ref)
+* [`collect_solutions`](@ref)
 """
 cancel_pipeline!(pl::Pipeline) = cancel!(pl.ctx)
 
@@ -65,8 +114,18 @@ cancel_pipeline!(pl::Pipeline) = cancel!(pl.ctx)
     wait_for_pipeline(pl::Pipeline)
 
 Wait for all the pipeline stages to finish.
+
+See also:
+
+* [`init_pipeline`](@ref)
+* [`start_pipeline!`](@ref)
+* [`send_initial_value`](@ref)
+* [`collect_solutions`](@ref)
+* [`cancel_pipeline!`](@ref)
 """
 wait_for_pipeline(pl::Pipeline) = foreach(wait, pl.tasks)
+
+### Status retrieval
 
 """
     is_pipeline_started(pl::Pipeline) -> Bool

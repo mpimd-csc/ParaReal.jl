@@ -25,7 +25,7 @@ function solve(
 
     # Make sure there were no errors:
     @debug "Waiting for completion"
-    wait.(pipeline.tasks)
+    wait_for_pipeline(pipeline)
 
     @debug "Collecting local solutions"
     sol = collect_solutions(pipeline)
