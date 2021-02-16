@@ -11,6 +11,8 @@ deps/deps.jl
 ### Other stuff
 
 tmp
+bench
+.vscode
 
 *.png
 *.pdf
