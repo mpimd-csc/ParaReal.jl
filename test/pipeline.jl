@@ -55,7 +55,7 @@ n2one = repeat(ws, inner=2)
 @testset "workers=$ids" for ids in (one2one, n2one, m2n)
     verbose && @info "Testing workers=$ids ..."
     verbose && @info "Initializing pipeline"
-    pl = init_pipeline(ids)
+    global pl = init_pipeline(ids)
     @test !is_pipeline_started(pl)
 
     verbose && @info "Starting worker tasks"
@@ -78,7 +78,7 @@ expensive(f) = x -> (sleep(delay); f(x))
 expensive_alg = ParaReal.Algorithm(csolve, expensive(fsolve))
 
 function test_cancellation(before::Bool, timeout)
-    pl = init_pipeline(one2one)
+    global pl = init_pipeline(one2one)
     start_pipeline!(pl, prob, expensive_alg, maxiters=10)
     before && send_initial_value(pl, prob)
     @test !is_pipeline_canceled(pl)
