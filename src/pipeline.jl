@@ -114,6 +114,7 @@ cancel_pipeline!(pl::Pipeline) = cancel!(pl.ctx)
     wait_for_pipeline(pl::Pipeline)
 
 Wait for all the pipeline stages to finish.
+Throws an error if the pipeline failed.
 
 See also:
 
@@ -123,7 +124,18 @@ See also:
 * [`collect_solutions`](@ref)
 * [`cancel_pipeline!`](@ref)
 """
-wait_for_pipeline(pl::Pipeline) = foreach(wait, pl.tasks)
+function wait_for_pipeline(pl::Pipeline)
+    errs = []
+    for t in pl.tasks
+        try
+            wait(t)
+        catch e
+            push!(errs, e)
+        end
+    end
+    isempty(errs) || throw(CompositeException(errs))
+    nothing
+end
 
 ### Status retrieval
 
@@ -138,13 +150,15 @@ is_pipeline_started(pl::Pipeline) = pl.tasks !== nothing
     is_pipeline_done(pl::Pipeline) -> Bool
 
 Determine whether all the stages of a pipeline have exited.
+Does not block and not throw an error, if the pipeline failed.
 """
 is_pipeline_done(pl::Pipeline) = is_pipeline_started(pl) && all(isready, pl.tasks)
 
 """
-    is_pipeline_failed(pl::Pipeline) -> Bool)
+    is_pipeline_failed(pl::Pipeline) -> Bool
 
 Determine whether some stage of a pipeline has exited because an exception was thrown.
+Does not block and not throw an error, if the pipeline failed.
 """
 function is_pipeline_failed(pl::Pipeline)
     is_pipeline_started(pl) || return false

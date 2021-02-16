@@ -23,6 +23,9 @@ struct GlobalSolution{S}
 end
 
 function collect_solutions(pipeline::Pipeline)
+    # Check for errors:
+    wait_for_pipeline(pipeline)
+
     @unpack results, workers = pipeline
     nsteps = length(workers)
 
