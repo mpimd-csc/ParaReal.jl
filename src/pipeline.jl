@@ -19,6 +19,9 @@ function init_pipeline(workers::Vector{Int})
     ctx = CancelCtx()
     configs = Vector{StageConfig}(undef, nsteps)
 
+    status = [:Initialized for _ in workers]
+    events = RemoteChannel(() -> Channel(2nsteps))
+
     # Initialize first stages:
     for i in 1:nsteps-1
         prev = conns[i]
@@ -28,7 +31,8 @@ function init_pipeline(workers::Vector{Int})
                                  prev=prev,
                                  next=next,
                                  ctx=ctx,
-                                 results=results)
+                                 results=results,
+                                 events=events)
     end
 
     # Initialize final stage:
@@ -40,13 +44,16 @@ function init_pipeline(workers::Vector{Int})
                                   prev=prev,
                                   next=next,
                                   ctx=ctx,
-                                  results=results)
+                                  results=results,
+                                  events=events)
 
     Pipeline(conns=conns,
              results=results,
              ctx=ctx,
              workers=workers,
-             configs=configs)
+             configs=configs,
+             events=events,
+             status=status)
 end
 
 """
@@ -69,6 +76,32 @@ function start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
         D.@spawnat w execute_stage(prob, alg, c; kwargs...)
     end
     pipeline.tasks = tasks
+    pipeline.eventhandler = @async _eventhandler(pipeline)
+    nothing
+end
+
+function _eventhandler(pipeline::Pipeline)
+    @unpack status, events, eventlog = pipeline
+    for (i, s, t) in events
+        # Process incoming event:
+        time_received = time()
+        e = Event(i, s, t, time_received)
+        push!(eventlog, e)
+        status[i] = s
+        # Stop if no further events are to be expected:
+        all(in((:Cancelled, :Done)), pipeline.status) && break
+    end
+    # Signal that events won't be processed anymore.
+    # Sending further events will cause an error.
+    close(events)
+    nothing
+end
+
+function _send_status_update(config::StageConfig, status::Symbol)
+    t = time()
+    i = config.step
+    msg = (i, status, t)
+    put!(config.events, msg)
     nothing
 end
 

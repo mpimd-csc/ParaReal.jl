@@ -5,6 +5,7 @@ function execute_stage(prob,
                 tol = 1e-5,
                )
 
+    _send_status_update(config, :Started)
     @unpack step, nsteps, prev, next, results, ctx = config
     finalstage = step == nsteps
 
@@ -24,10 +25,12 @@ function execute_stage(prob,
     converged = false
     niters = 0
     @debug "Waiting for data" step pid=D.myid() tid=T.threadid()
-    iscanceled(ctx) && return
+    _send_status_update(config, :Waiting)
+    iscanceled(ctx) && (_send_status_update(config, :Cancelled); return)
     for u0 in prev
         niters += 1
         @debug "Received new initial value" step niters
+        _send_status_update(config, :Running)
         prob = remake(prob, u0=u0, tspan=tspan) # copies :-(
 
         # Abort if maximum number of iterations is reached.
@@ -39,7 +42,7 @@ function execute_stage(prob,
         # Compute coarse solution
         coarse_sol = csolve(prob, alg)
         coarse_u = nextvalue(coarse_sol)
-        iscanceled(ctx) && return
+        iscanceled(ctx) && (_send_status_update(config, :Cancelled); return)
 
         # Hand correction of coarse solution on to the next workers.
         # Note that there is no correction to be done in the first iteration.
@@ -50,6 +53,7 @@ function execute_stage(prob,
             diff = norm(correction - fine_u, 1) / norm(correction, 1)
             if diff < tol
                 @debug "Converged successfully" step niters
+                _send_status_update(config, :Converged)
                 converged = true
                 break
             else
@@ -60,7 +64,7 @@ function execute_stage(prob,
         # Compute fine solution
         fine_sol = fsolve(prob, alg)
         fine_u = nextvalue(fine_sol)
-        iscanceled(ctx) && return
+        iscanceled(ctx) && (_send_status_update(config, :Cancelled); return)
     end
 
     if niters > maxiters
@@ -79,6 +83,7 @@ function execute_stage(prob,
     @debug "Sending results" step
     put!(results, (step, sol)) # Redo? return via `return` instead of channel
     @debug "Finished" step niters
+    _send_status_update(config, :Done)
     nothing
 end
 

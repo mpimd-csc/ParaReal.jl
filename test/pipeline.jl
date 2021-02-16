@@ -52,25 +52,38 @@ m2n = repeat(ws, outer=2)
 # thread ids:  1 2 1 2
 n2one = repeat(ws, inner=2)
 
+function wait4status(pl, i, states...)
+    cb = () -> pl.status[i] in states
+    timedwait(cb, 10.0)
+end
+
 @testset "workers=$ids" for ids in (one2one, n2one, m2n)
     verbose && @info "Testing workers=$ids ..."
     verbose && @info "Initializing pipeline"
     global pl = init_pipeline(ids)
     @test !is_pipeline_started(pl)
+    @test pl.status[1] == :Initialized
 
     verbose && @info "Starting worker tasks"
     start_pipeline!(pl, prob, alg, maxiters=10)
     @test is_pipeline_started(pl)
     @test !is_pipeline_done(pl)
     @test_throws Exception start_pipeline!(pl, prob, alg, maxiters=10)
+    @test wait4status(pl, 1, :Started, :Waiting) == :ok
 
     verbose && @info "Sending initial value"
     send_initial_value(pl, prob)
+    @test wait4status(pl, 1, :Running, :Done) == :ok
 
     verbose && @info "Collecting solutions"
     sol = collect_solutions(pl)
     @test is_pipeline_done(pl)
     @test !is_pipeline_failed(pl)
+    @test pl.status == [:Done for _ in ids]
+
+    # All spawned tasks should have finished by now.
+    @test all(isready, pl.tasks)
+    @test istaskdone(pl.eventhandler)
 end
 
 delay = 5.0 # seconds
@@ -82,6 +95,7 @@ function test_cancellation(before::Bool, timeout)
     start_pipeline!(pl, prob, expensive_alg, maxiters=10)
     before && send_initial_value(pl, prob)
     @test !is_pipeline_canceled(pl)
+    @test all(!=(:Cancelled), pl.status)
 
     cancel_pipeline!(pl)
     !before && send_initial_value(pl, prob)
@@ -91,6 +105,11 @@ function test_cancellation(before::Bool, timeout)
     @test t < timeout # pipeline did not complete; total runtime >= 2delay
     @test is_pipeline_done(pl)
     @test !is_pipeline_failed(pl)
+    @test pl.status[end] == :Cancelled
+
+    # All spawned tasks should have finished by now.
+    @test all(isready, pl.tasks)
+    @test istaskdone(pl.eventhandler)
 end
 
 @testset "Cancellation" begin
@@ -102,4 +121,23 @@ end
         verbose && @info "Testing cancellation after sending initial value"
         test_cancellation(true, delay+1.0)
     end
+end
+
+function prepare(eventlog, stage)
+    l = filter(e -> e.stage == stage, eventlog)
+    sort!(l; by = e -> e.time_sent)
+    map(e -> e.status, l)
+end
+
+@testset "Event Log" begin
+    global pl = init_pipeline([1, 1])
+    start_pipeline!(pl, prob, alg, maxiters=10)
+    send_initial_value(pl, prob)
+    wait_for_pipeline(pl)
+
+    log = pl.eventlog
+    s1 = prepare(log, 1)
+    s2 = prepare(log, 2)
+    @test s1 == [:Started, :Waiting, :Running, :Done]
+    @test s2 == [:Started, :Waiting, :Running, :Running, :Done]
 end

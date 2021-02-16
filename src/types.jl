@@ -23,7 +23,15 @@ Base.@kwdef struct StageConfig
     prev::ValueChannel # where to get new `u0`-values from
     next::ValueChannel # where to put `u0`-values for the next pipeline step
     results::RemoteChannel # where to put the solution objects after convergence
+    events::RemoteChannel # where to send status updates
     ctx::CancelCtx
+end
+
+struct Event
+    stage::Int
+    status::Symbol
+    time_sent::Float64
+    time_received::Float64
 end
 
 Base.@kwdef mutable struct Pipeline
@@ -31,7 +39,14 @@ Base.@kwdef mutable struct Pipeline
     results::ValueChannel
     ctx::CancelCtx
 
+    # Worker stages:
     workers::Vector{Int}
     configs::Vector{StageConfig}
     tasks::Union{Vector{RemoteTask}, Nothing} = nothing
+
+    # Status updates:
+    status::Vector{Symbol}
+    events::RemoteChannel
+    eventlog::Vector{Event} = Event[]
+    eventhandler::Union{Task, Nothing} = nothing
 end
