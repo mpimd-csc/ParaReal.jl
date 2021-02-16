@@ -15,7 +15,6 @@ function default_update!(y_new, y_coarse, y_fine, y_coarse_old)
 end
 
 const ValueChannel = RemoteChannel{Channel{Any}}
-const RemoteTask = Future
 
 Base.@kwdef struct StageConfig
     step::Int # corresponding step in the pipeline
@@ -42,7 +41,7 @@ Base.@kwdef mutable struct Pipeline
     # Worker stages:
     workers::Vector{Int}
     configs::Vector{StageConfig}
-    tasks::Union{Vector{RemoteTask}, Nothing} = nothing
+    tasks::Union{Vector{Future}, Nothing} = nothing
 
     # Status updates:
     status::Vector{Symbol}
