@@ -27,7 +27,8 @@ function execute_stage(prob,
     niters = 0
     @debug "Waiting for data" step pid=D.myid() tid=T.threadid()
     _send_status_update(config, :Waiting)
-    for msg in prev
+    while true
+        msg = take!(prev)
         iscancelled(msg) && (_send_status_update(config, :Cancelled); return)
 
         niters += 1

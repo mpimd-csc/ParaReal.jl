@@ -28,6 +28,5 @@ include("problem.jl")
 include("solve.jl")
 
 include("utils.jl")
-include("compat.jl")
 
 end # module

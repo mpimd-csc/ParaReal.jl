@@ -80,7 +80,8 @@ end
 
 function _eventhandler(pipeline::Pipeline)
     @unpack status, events, eventlog = pipeline
-    for (i, s, t) in events
+    while true
+        i, s, t = take!(events)
         # Process incoming event:
         time_received = time()
         e = Event(i, s, t, time_received)
