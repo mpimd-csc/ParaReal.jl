@@ -16,7 +16,7 @@ using ParaReal: init_pipeline,
                 collect_solutions,
                 is_pipeline_started,
                 is_pipeline_done,
-                is_pipeline_canceled,
+                is_pipeline_cancelled,
                 is_pipeline_failed
 
 verbose && @info "Creating problem instance"
@@ -94,12 +94,12 @@ function test_cancellation(before::Bool, timeout)
     global pl = init_pipeline(one2one)
     start_pipeline!(pl, prob, expensive_alg, maxiters=10)
     before && send_initial_value(pl, prob)
-    @test !is_pipeline_canceled(pl)
+    @test !is_pipeline_cancelled(pl)
     @test all(!=(:Cancelled), pl.status)
 
     cancel_pipeline!(pl)
     !before && send_initial_value(pl, prob)
-    @test is_pipeline_canceled(pl)
+    @test is_pipeline_cancelled(pl)
 
     t = @elapsed wait_for_pipeline(pl)
     @test t < timeout # pipeline did not complete; total runtime >= 2delay

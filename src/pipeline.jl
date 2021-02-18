@@ -211,8 +211,8 @@ function is_pipeline_failed(pl::Pipeline)
 end
 
 """
-    is_pipeline_canceled(pl::Pipeline)
+    is_pipeline_cancelled(pl::Pipeline)
 
-Determine whether the pipeline had been canceled.
+Determine whether the pipeline had been cancelled.
 """
-is_pipeline_canceled(pl::Pipeline) = pl.cancelled
+is_pipeline_cancelled(pl::Pipeline) = pl.cancelled
