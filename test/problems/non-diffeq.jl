@@ -16,7 +16,7 @@ verbose && @info "Defining new problem and solution types"
     # Implement interface
     ParaReal.initialvalue(prob::SomeProblem) = prob.X0
     ParaReal.nextvalue(sol::SomeSolution) = last(sol.Xs)
-    ParaReal.remake(::SomeProblem; u0, tspan) = SomeProblem(u0, tspan)
+    ParaReal.remake_prob!(::SomeProblem, _alg, u0, tspan) = SomeProblem(u0, tspan)
 end
 
 # Optional Interface

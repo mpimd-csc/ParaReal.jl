@@ -32,7 +32,7 @@ function execute_stage(prob,
         niters += 1
         @debug "Received new initial value" step niters
         _send_status_update(config, :Running)
-        prob = remake(prob, u0=u0, tspan=tspan) # copies :-(
+        prob = remake_prob!(prob, alg, u0, tspan)
 
         # Abort if maximum number of iterations is reached.
         niters > maxiters && break
