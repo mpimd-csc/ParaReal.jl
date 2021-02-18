@@ -16,6 +16,7 @@ function execute_stage(prob,
     _u = initialvalue(prob)
     u_coarse′ = similar(_u)
     u = similar(_u)
+    u′ = similar(_u)
 
     # Define variables to extend their scope
     u_coarse = nothing
@@ -47,15 +48,17 @@ function execute_stage(prob,
         # Note that there is no correction to be done in the first iteration.
         if niters == 1
             finalstage || put!(next, u_coarse)
+            copyto!(u′, u_coarse)
         else
             alg.update!(u, u_coarse, u_fine, u_coarse′)
-            converged = isapprox(u, u_fine; rtol=tol)
+            converged = isapprox(u′, u; rtol=tol)
             if converged
                 @debug "Converged successfully" step niters
                 _send_status_update(config, :Converged)
                 break
             else
                 finalstage || put!(next, u)
+                copyto!(u′, u)
             end
         end
 
