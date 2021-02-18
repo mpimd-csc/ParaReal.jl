@@ -6,7 +6,7 @@ function execute_stage(prob,
                )
 
     _send_status_update(config, :Started)
-    @unpack step, nsteps, prev, next, results, ctx = config
+    @unpack step, nsteps, prev, next, results = config
     finalstage = step == nsteps
 
     # Initialize local problem instance
@@ -27,12 +27,13 @@ function execute_stage(prob,
     niters = 0
     @debug "Waiting for data" step pid=D.myid() tid=T.threadid()
     _send_status_update(config, :Waiting)
-    iscanceled(ctx) && (_send_status_update(config, :Cancelled); return)
-    for u0 in prev
+    for msg in prev
+        iscancelled(msg) && (_send_status_update(config, :Cancelled); return)
+
         niters += 1
         @debug "Received new initial value" step niters
         _send_status_update(config, :Running)
-        prob = remake_prob!(prob, alg, u0, tspan)
+        prob = remake_prob!(prob, alg, nextvalue(msg), tspan)
 
         # Abort if maximum number of iterations is reached.
         niters > maxiters && break
@@ -42,12 +43,12 @@ function execute_stage(prob,
 
         # Compute coarse solution
         u_coarse = nextvalue(csolve(prob, alg))
-        iscanceled(ctx) && (_send_status_update(config, :Cancelled); return)
+        iscancelled(prev) && (_send_status_update(config, :Cancelled); return)
 
         # Hand correction of coarse solution on to the next workers.
         # Note that there is no correction to be done in the first iteration.
         if niters == 1
-            finalstage || put!(next, u_coarse)
+            finalstage || put!(next, NextValue(u_coarse))
             copyto!(u′, u_coarse)
         else
             alg.update!(u, u_coarse, u_fine, u_coarse′)
@@ -57,7 +58,7 @@ function execute_stage(prob,
                 _send_status_update(config, :Converged)
                 break
             else
-                finalstage || put!(next, u)
+                finalstage || put!(next, NextValue(u))
                 copyto!(u′, u)
             end
         end
@@ -65,7 +66,8 @@ function execute_stage(prob,
         # Compute fine solution
         fsol = fsolve(prob, alg)
         u_fine = nextvalue(fsol)
-        iscanceled(ctx) && (_send_status_update(config, :Cancelled); return)
+
+        didconverge(msg) && break
     end
 
     if niters > maxiters
@@ -76,8 +78,7 @@ function execute_stage(prob,
     # next/same solution again. If, instead, the previous worker
     # converged, closing `prev`, send the last fine solution to `next`
     # as the (eventually) converged solution of this worker.
-    converged || finalstage || put!(next, u_fine)
-    finalstage || close(next)
+    finalstage || put!(next, FinalValue(u_fine))
 
     retcode = niters > maxiters ? :MaxIters : :Success
     sol = LocalSolution(fsol, retcode)

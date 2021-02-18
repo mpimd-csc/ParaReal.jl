@@ -13,10 +13,11 @@ See also:
 * [`cancel_pipeline!`](@ref)
 """
 function init_pipeline(workers::Vector{Int})
-    conns = map(RemoteChannel, workers)
+    conns = map(workers) do w
+        RemoteChannel(() -> Channel{Message}(1), w)
+    end
     nsteps = length(workers)
     results = RemoteChannel(() -> Channel(nsteps))
-    ctx = CancelCtx()
     configs = Vector{StageConfig}(undef, nsteps)
 
     status = [:Initialized for _ in workers]
@@ -30,7 +31,6 @@ function init_pipeline(workers::Vector{Int})
                                  nsteps=nsteps,
                                  prev=prev,
                                  next=next,
-                                 ctx=ctx,
                                  results=results,
                                  events=events)
     end
@@ -43,13 +43,11 @@ function init_pipeline(workers::Vector{Int})
                                   nsteps=nsteps,
                                   prev=prev,
                                   next=next,
-                                  ctx=ctx,
                                   results=results,
                                   events=events)
 
     Pipeline(conns=conns,
              results=results,
-             ctx=ctx,
              workers=workers,
              configs=configs,
              events=events,
@@ -122,8 +120,7 @@ See also:
 function send_initial_value(pipeline::Pipeline, prob)
     u0 = initialvalue(prob)
     c = first(pipeline.conns)
-    put!(c, u0)
-    close(c)
+    put!(c, FinalValue(u0))
     nothing
 end
 
@@ -141,7 +138,12 @@ See also:
 * [`wait_for_pipeline`](@ref)
 * [`collect_solutions`](@ref)
 """
-cancel_pipeline!(pl::Pipeline) = cancel!(pl.ctx)
+function cancel_pipeline!(pl::Pipeline)
+    pl.cancelled = true
+    for c in pl.conns
+        put!(c, Cancellation())
+    end
+end
 
 """
     wait_for_pipeline(pl::Pipeline)
@@ -213,4 +215,4 @@ end
 
 Determine whether the pipeline had been canceled.
 """
-is_pipeline_canceled(pl::Pipeline) = iscanceled(pl.ctx)
+is_pipeline_canceled(pl::Pipeline) = pl.cancelled
