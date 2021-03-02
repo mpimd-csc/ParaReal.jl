@@ -150,5 +150,5 @@ end
     s1 = prepare(log, 1)
     s2 = prepare(log, 2)
     @test s1 == [:Started, :Waiting, :Running, :Done]
-    @test s2 == [:Started, :Waiting, :Running, :Running, :Done]
+    @test s2 == [:Started, :Waiting, :Running, :Waiting, :Running, :Done]
 end
