@@ -36,28 +36,15 @@ fsolve = prob -> begin
 end
 alg = ParaReal.Algorithm(csolve, fsolve)
 
-# Assuming the stages of a pipeline are executed on different threads on each
-# of the workers, we should explicitly test for pipeline configurations that
-# send messages (between workers) from and to threads other than 1:
-
-# process ids: 1 2
-# thread ids:  1 1
-one2one = ws
-
-# process ids: 1 2 1 2
-# thread ids:  1 1 2 2
-m2n = repeat(ws, outer=2)
-
-# process ids: 1 1 2 2
-# thread ids:  1 2 1 2
-n2one = repeat(ws, inner=2)
+# Before attempting to run jobs on remote machines, perform a local smoke test
+# to catch stupid mistakes early.
 
 function wait4status(pl, i, states...)
     cb = () -> pl.status[i] in states
     timedwait(cb, 10.0)
 end
 
-@testset "workers=$ids" for ids in (one2one, n2one, m2n)
+function test_connections(ids)
     verbose && @info "Testing workers=$ids ..."
     verbose && @info "Initializing pipeline"
     global pl = init_pipeline(ids)
@@ -84,6 +71,30 @@ end
     # All spawned tasks should have finished by now.
     @test all(isready, pl.tasks)
     @test istaskdone(pl.eventhandler)
+end
+
+@testset "Smoke Test" begin
+    test_connections([1,1,1,1])
+end
+
+# Assuming the stages of a pipeline are executed on different threads on each
+# of the workers, we should explicitly test for pipeline configurations that
+# send messages (between workers) from and to threads other than 1:
+
+# process ids: 1 2
+# thread ids:  1 1
+one2one = ws
+
+# process ids: 1 2 1 2
+# thread ids:  1 1 2 2
+m2n = repeat(ws, outer=2)
+
+# process ids: 1 1 2 2
+# thread ids:  1 2 1 2
+n2one = repeat(ws, inner=2)
+
+@testset "workers=$ids" for ids in (one2one, n2one, m2n)
+    test_connections(ids)
 end
 
 delay = 5.0 # seconds

@@ -162,12 +162,19 @@ See also:
 """
 function wait_for_pipeline(pl::Pipeline)
     errs = []
+    # Wait for stage executors:
     for t in pl.tasks
         try
             wait(t)
         catch e
             push!(errs, e)
         end
+    end
+    # Wait for event handler:
+    try
+        wait(pl.eventhandler)
+    catch e
+        push!(errs, e)
     end
     isempty(errs) || throw(CompositeException(errs))
     nothing
