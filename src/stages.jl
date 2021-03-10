@@ -73,7 +73,8 @@ function _execute_stage(
     if (k == n || didconverge(msg)) && !converged
         k += 1
         converged = true
-        send_val(config, u_fine, true)
+        cancelled = send_val(config, u_fine, true)
+        cancelled && return
     end
 
     niters = k
