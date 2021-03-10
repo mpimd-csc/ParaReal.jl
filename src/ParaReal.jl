@@ -19,8 +19,6 @@ using UnPack: @unpack
 const T = Base.Threads
 const D = Distributed
 
-include("cancellation.jl")
-
 include("types.jl")
 include("stages.jl")
 include("pipeline.jl")
@@ -30,6 +28,5 @@ include("problem.jl")
 include("solve.jl")
 
 include("utils.jl")
-include("compat.jl")
 
 end # module

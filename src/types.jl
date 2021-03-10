@@ -1,29 +1,25 @@
 struct Algorithm{CoarseAlgorithm,
                          FineAlgorithm,
-                         UpdateFunction,
                         } <: DiffEqBase.DEAlgorithm
     coarse::CoarseAlgorithm
     fine::FineAlgorithm
-    update!::UpdateFunction
 end
 
-Algorithm(coarse, fine) = Algorithm(coarse, fine, default_update!)
-
-function default_update!(y_new, y_coarse, y_fine, y_coarse_old)
-    @. y_new = y_coarse+y_fine-y_coarse_old
-    nothing
+struct Message
+    cancelled::Bool
+    converged::Bool
+    u::Any
 end
 
-const ValueChannel = RemoteChannel{Channel{Any}}
+const MessageChannel = RemoteChannel{Channel{Message}}
 
 Base.@kwdef struct StageConfig
     step::Int # corresponding step in the pipeline
     nsteps::Int # total number of steps in the pipeline
-    prev::ValueChannel # where to get new `u0`-values from
-    next::ValueChannel # where to put `u0`-values for the next pipeline step
+    prev::MessageChannel # where to get new `u0`-values from
+    next::MessageChannel # where to put `u0`-values for the next pipeline step
     results::RemoteChannel # where to put the solution objects after convergence
     events::RemoteChannel # where to send status updates
-    ctx::CancelCtx
 end
 
 struct Event
@@ -34,9 +30,8 @@ struct Event
 end
 
 Base.@kwdef mutable struct Pipeline
-    conns::Vector{ValueChannel}
-    results::ValueChannel
-    ctx::CancelCtx
+    conns::Vector{MessageChannel}
+    results::RemoteChannel
 
     # Worker stages:
     workers::Vector{Int}
@@ -48,4 +43,14 @@ Base.@kwdef mutable struct Pipeline
     events::RemoteChannel
     eventlog::Vector{Event} = Event[]
     eventhandler::Union{Task, Nothing} = nothing
+    cancelled::Bool = false
 end
+
+NextValue(u) = Message(false, false, u)
+FinalValue(u) = Message(false, true, u)
+Cancellation() = Message(true, false, nothing)
+
+iscancelled(c::RemoteChannel) = isready(c) && iscancelled(fetch(c))
+iscancelled(m::Message) = m.cancelled
+didconverge(m::Message) = m.converged
+nextvalue(m::Message) = m.u

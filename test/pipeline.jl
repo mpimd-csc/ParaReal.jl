@@ -16,7 +16,7 @@ using ParaReal: init_pipeline,
                 collect_solutions,
                 is_pipeline_started,
                 is_pipeline_done,
-                is_pipeline_canceled,
+                is_pipeline_cancelled,
                 is_pipeline_failed
 
 verbose && @info "Creating problem instance"
@@ -36,28 +36,15 @@ fsolve = prob -> begin
 end
 alg = ParaReal.Algorithm(csolve, fsolve)
 
-# Assuming the stages of a pipeline are executed on different threads on each
-# of the workers, we should explicitly test for pipeline configurations that
-# send messages (between workers) from and to threads other than 1:
-
-# process ids: 1 2
-# thread ids:  1 1
-one2one = ws
-
-# process ids: 1 2 1 2
-# thread ids:  1 1 2 2
-m2n = repeat(ws, outer=2)
-
-# process ids: 1 1 2 2
-# thread ids:  1 2 1 2
-n2one = repeat(ws, inner=2)
+# Before attempting to run jobs on remote machines, perform a local smoke test
+# to catch stupid mistakes early.
 
 function wait4status(pl, i, states...)
     cb = () -> pl.status[i] in states
     timedwait(cb, 10.0)
 end
 
-@testset "workers=$ids" for ids in (one2one, n2one, m2n)
+function test_connections(ids)
     verbose && @info "Testing workers=$ids ..."
     verbose && @info "Initializing pipeline"
     global pl = init_pipeline(ids)
@@ -86,6 +73,30 @@ end
     @test istaskdone(pl.eventhandler)
 end
 
+@testset "Smoke Test" begin
+    test_connections([1,1,1,1])
+end
+
+# Assuming the stages of a pipeline are executed on different threads on each
+# of the workers, we should explicitly test for pipeline configurations that
+# send messages (between workers) from and to threads other than 1:
+
+# process ids: 1 2
+# thread ids:  1 1
+one2one = ws
+
+# process ids: 1 2 1 2
+# thread ids:  1 1 2 2
+m2n = repeat(ws, outer=2)
+
+# process ids: 1 1 2 2
+# thread ids:  1 2 1 2
+n2one = repeat(ws, inner=2)
+
+@testset "workers=$ids" for ids in (one2one, n2one, m2n)
+    test_connections(ids)
+end
+
 delay = 5.0 # seconds
 expensive(f) = x -> (sleep(delay); f(x))
 expensive_alg = ParaReal.Algorithm(csolve, expensive(fsolve))
@@ -94,12 +105,12 @@ function test_cancellation(before::Bool, timeout)
     global pl = init_pipeline(one2one)
     start_pipeline!(pl, prob, expensive_alg, maxiters=10)
     before && send_initial_value(pl, prob)
-    @test !is_pipeline_canceled(pl)
+    @test !is_pipeline_cancelled(pl)
     @test all(!=(:Cancelled), pl.status)
 
     cancel_pipeline!(pl)
     !before && send_initial_value(pl, prob)
-    @test is_pipeline_canceled(pl)
+    @test is_pipeline_cancelled(pl)
 
     t = @elapsed wait_for_pipeline(pl)
     @test t < timeout # pipeline did not complete; total runtime >= 2delay
@@ -139,5 +150,5 @@ end
     s1 = prepare(log, 1)
     s2 = prepare(log, 2)
     @test s1 == [:Started, :Waiting, :Running, :Done]
-    @test s2 == [:Started, :Waiting, :Running, :Running, :Done]
+    @test s2 == [:Started, :Waiting, :Running, :Waiting, :Running, :Done]
 end

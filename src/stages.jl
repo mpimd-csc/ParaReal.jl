@@ -6,80 +6,67 @@ function execute_stage(prob,
                )
 
     _send_status_update(config, :Started)
-    @unpack step, nsteps, prev, next, results, ctx = config
+    @unpack step, nsteps, prev, next, results = config
     finalstage = step == nsteps
 
-    # Initialize local problem instance
+    n = step
+    N = nsteps
+    K = maxiters
+    @assert K >= 1
     tspan = local_tspan(step, nsteps, prob.tspan)
 
-    # Allocate buffers
-    u = initialvalue(prob)
-    coarse_u_old = similar(u)
-    correction = similar(u)
-
-    # Define variables to extend their scope
-    coarse_u = nothing
-    fine_u = nothing
-    fine_sol = nothing
-
-    converged = false
-    niters = 0
     @debug "Waiting for data" step pid=D.myid() tid=T.threadid()
-    _send_status_update(config, :Waiting)
-    iscanceled(ctx) && (_send_status_update(config, :Cancelled); return)
-    for u0 in prev
-        niters += 1
-        @debug "Received new initial value" step niters
-        _send_status_update(config, :Running)
-        prob = remake(prob, u0=u0, tspan=tspan) # copies :-(
-
-        # Abort if maximum number of iterations is reached.
-        niters > maxiters && break
-
-        # Backupt old coarse solution if needed
-        niters > 1 && copyto!(coarse_u_old, coarse_u)
+    nconverged = 0
+    u = u_coarse = u_fine = nothing
+    local k, msg, fsol, converged
+    for outer k in 1:min(n, K-1)
+        # Receive initial value and initialize local problem instance
+        msg, cancelled = receive_val(config)
+        cancelled && return
+        u_prev = nextvalue(msg)
+        prob = remake_prob!(prob, alg, u_prev, tspan)
 
         # Compute coarse solution
-        coarse_sol = csolve(prob, alg)
-        coarse_u = nextvalue(coarse_sol)
-        iscanceled(ctx) && (_send_status_update(config, :Cancelled); return)
+        u_coarse′ = u_coarse
+        u_coarse  = nextvalue(csolve(prob, alg))
 
-        # Hand correction of coarse solution on to the next workers.
-        # Note that there is no correction to be done in the first iteration.
-        if niters == 1
-            finalstage || put!(next, coarse_u)
-        else
-            alg.update!(correction, coarse_u, fine_u, coarse_u_old)
-            diff = norm(correction - fine_u, 1) / norm(correction, 1)
-            if diff < tol
-                @debug "Converged successfully" step niters
-                _send_status_update(config, :Converged)
-                converged = true
-                break
-            else
-                finalstage || put!(next, correction)
-            end
-        end
+        # Compute refined solution k
+        u′ = u
+        u  = update_sol!(prob, alg, u, u_fine, u_coarse, u_coarse′)
+
+        # If the refined solution fulfills the convergence criterion,
+        # perform a few iterations more to smooth out some more errors.
+        nconverged += sol_converged(u′, u; tol=tol)
+        converged = nconverged >= 2
+
+        # Send correction of coarse solution on to the next stage
+        cancelled = send_val(config, u, converged)
+        cancelled && return
+        converged && break
 
         # Compute fine solution
-        fine_sol = fsolve(prob, alg)
-        fine_u = nextvalue(fine_sol)
-        iscanceled(ctx) && (_send_status_update(config, :Cancelled); return)
+        fsol = fsolve(prob, alg)
+        u_fine = nextvalue(fsol)
+
+        # If the previous stage converged, all subsequent values of this stage
+        # will equal the most recent u_fine. So skip ahead and send that one.
+        didconverge(msg) && break
     end
 
-    if niters > maxiters
-        @warn "Reached reached maximum number of iterations: $maxiters" step
+    # Send final solution on to the next stage
+    if (k == n || didconverge(msg)) && !converged
+        k += 1
+        converged = true
+        send_val(config, u_fine, true)
     end
 
-    # If this worker converged, there is no need to pass on the
-    # next/same solution again. If, instead, the previous worker
-    # converged, closing `prev`, send the last fine solution to `next`
-    # as the (eventually) converged solution of this worker.
-    converged || finalstage || put!(next, fine_u)
-    finalstage || close(next)
+    niters = k
+    if converged
+        @debug "Converged successfully" step niters
+    end
 
-    retcode = niters > maxiters ? :MaxIters : :Success
-    sol = LocalSolution(fine_sol, retcode)
+    retcode = k >= K && !converged ? :MaxIters : :Success
+    sol = LocalSolution(fsol, retcode)
     @debug "Sending results" step
     put!(results, (step, sol)) # Redo? return via `return` instead of channel
     @debug "Finished" step niters
@@ -103,3 +90,58 @@ function fsolve end
 
 csolve(prob, alg::Algorithm) = alg.coarse(prob)
 fsolve(prob, alg::Algorithm) = alg.fine(prob)
+
+function check_cancellation(config::StageConfig, x)
+    iscancelled(x) || return false
+    _send_status_update(config, :Cancelled)
+    return true
+end
+
+function receive_val(config::StageConfig)
+    _send_status_update(config, :Waiting)
+    @unpack prev = config
+    msg = take!(prev)
+    cancelled = check_cancellation(config, msg)
+    cancelled && return msg, true
+    _send_status_update(config, :Running)
+    return msg, false
+end
+
+function send_val(config::StageConfig, u, isfinal::Bool)
+    @unpack prev, next, step, nsteps = config
+    finalstage = step == nsteps
+
+    cancelled = check_cancellation(config, prev)
+    cancelled && return true
+    msg = isfinal ? FinalValue(u) : NextValue(u)
+    finalstage || put!(next, msg)
+    return false
+end
+
+"""
+    update_sol!(prob, alg, u::Nothing, u_fine::Nothing, u_coarse, u_coarse′::Nothing) -> u
+
+Compute the first refined solution (`k=1`) where there are no previous
+solutions `u_fine` and `u_coarse′`. Defaults to `copy(u_coarse)`.
+
+When defining a new problem or algorithm, you may need to add a new method for this function.
+"""
+function update_sol!(_prob, _alg, u::Nothing, u_fine::Nothing, u_coarse, u_coarse′::Nothing)
+    copy(u_coarse)
+end
+
+"""
+    update_sol!(prob, alg, u, u_fine, u_coarse, u_coarse′) -> u
+
+Compute the correction of the current `u_coarse` given the previous solutions
+`u_fine` and `u_coarse′`. Defaults to `@. u = u_coarse + u_fine - u_coarse′`,
+i.e. updating `u` in-place.
+
+When defining a new problem or algorithm, you may need to add a new method for this function.
+"""
+function update_sol!(_prob, _alg, u, u_fine, u_coarse, u_coarse′)
+    @. u = u_coarse + u_fine - u_coarse′
+end
+
+sol_converged(u′::Nothing, u; tol) = false
+sol_converged(u′, u; tol) = isapprox(u′, u; rtol=tol)
