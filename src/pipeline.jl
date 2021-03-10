@@ -87,8 +87,13 @@ function _eventhandler(pipeline::Pipeline)
         e = Event(i, s, t, time_received)
         push!(eventlog, e)
         status[i] = s
+        # If stage failed, cancel whole pipeline:
+        if isfailed(s)
+            @warn "Cancelling pipeline due to failure on stage $i"
+            cancel_pipeline!(pipeline)
+        end
         # Stop if no further events are to be expected:
-        all(in((:Cancelled, :Done)), pipeline.status) && break
+        isdone(s) && all(isdone, status) && break
     end
     # Signal that events won't be processed anymore.
     # Sending further events will cause an error.
@@ -140,6 +145,7 @@ See also:
 * [`collect_solutions`](@ref)
 """
 function cancel_pipeline!(pl::Pipeline)
+    pl.cancelled && return
     pl.cancelled = true
     for c in pl.conns
         put!(c, Cancellation())
@@ -164,11 +170,9 @@ function wait_for_pipeline(pl::Pipeline)
     errs = []
     # Wait for stage executors:
     for t in pl.tasks
-        try
-            wait(t)
-        catch e
-            push!(errs, e)
-        end
+        e = fetch(t)
+        e isa Exception || continue
+        push!(errs, e)
     end
     # Wait for event handler:
     try
@@ -208,12 +212,8 @@ function is_pipeline_failed(pl::Pipeline)
     @unpack tasks = pl
     for t in tasks
         isready(t) || continue
-        try
-            # should return nothing:
-            fetch(t)
-        catch
-            return true
-        end
+        e = fetch(t)
+        e isa Exception && return true
     end
     return false
 end

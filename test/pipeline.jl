@@ -152,3 +152,22 @@ end
     @test s1 == [:Started, :Waiting, :Running, :Done]
     @test s2 == [:Started, :Waiting, :Running, :Waiting, :Running, :Done]
 end
+
+bang(_) = error("bang")
+bangbang = ParaReal.Algorithm(bang, bang) # Feuer frei!
+
+@testset "Explosions" begin
+    verbose && @info "Testing explosions"
+    global pl = init_pipeline([1, 1])
+    start_pipeline!(pl, prob, bangbang, maxiters=10)
+    send_initial_value(pl, prob)
+    @test_throws CompositeException wait_for_pipeline(pl)
+    @test is_pipeline_done(pl)
+    @test is_pipeline_failed(pl)
+
+    log = pl.eventlog
+    s1 = prepare(log, 1)
+    s2 = prepare(log, 2)
+    @test s1 == [:Started, :Waiting, :Running, :Failed]
+    @test s2 == [:Started, :Waiting, :Cancelled]
+end

@@ -22,6 +22,7 @@ const D = Distributed
 include("types.jl")
 include("stages.jl")
 include("pipeline.jl")
+include("status.jl")
 
 include("solution.jl")
 include("problem.jl")
