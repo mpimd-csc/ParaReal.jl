@@ -18,14 +18,7 @@ function solve(
     pipeline = init_pipeline(workers)
 
     @debug "Starting worker tasks"
-    start_pipeline!(pipeline, prob, alg, maxiters=maxiters)
-
-    @debug "Sending initial value"
-    send_initial_value(pipeline, prob)
-
-    # Make sure there were no errors:
-    @debug "Waiting for completion"
-    wait_for_pipeline(pipeline)
+    run_pipeline!(pipeline, prob, alg, maxiters=maxiters)
 
     @debug "Collecting local solutions"
     sol = collect_solutions(pipeline)

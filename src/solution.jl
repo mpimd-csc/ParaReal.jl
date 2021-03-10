@@ -22,6 +22,14 @@ struct GlobalSolution{S}
     end
 end
 
+"""
+    collect_solutions(pipeline::Pipeline)
+
+Wait for the pipeline to finish and return a [`GlobalSolution`](@ref) of all
+solutions for the smaller time slices (in order).
+
+See [`Pipeline`](@ref) for the official interface.
+"""
 function collect_solutions(pipeline::Pipeline)
     # Check for errors:
     wait_for_pipeline(pipeline)

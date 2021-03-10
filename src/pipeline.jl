@@ -4,13 +4,7 @@
 Initialize a pipeline to eventually run on the worker ids specified by
 `workers`. Do not start the tasks executing the pipeline stages.
 
-See also:
-
-* [`start_pipeline!`](@ref)
-* [`send_initial_value`](@ref)
-* [`wait_for_pipeline`](@ref)
-* [`collect_solutions`](@ref)
-* [`cancel_pipeline!`](@ref)
+See [`Pipeline`](@ref) for the official interface.
 """
 function init_pipeline(workers::Vector{Int})
     conns = map(workers) do w
@@ -55,17 +49,26 @@ function init_pipeline(workers::Vector{Int})
 end
 
 """
+    run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
+
+Create and schedule the tasks executing the pipeline stages.
+Send the initial value of `prob` and wait for the completion of all stages.
+Throws an error if the pipeline failed.
+
+See [`Pipeline`](@ref) for the official interface.
+"""
+function run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
+    start_pipeline!(pipeline, prob, alg; kwargs...)
+    send_initial_value(pipeline, prob)
+    wait_for_pipeline(pipeline)
+end
+
+"""
     start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
 
 Create and schedule the tasks executing the pipeline stages.
 
-See also:
-
-* [`init_pipeline`](@ref)
-* [`send_initial_value`](@ref)
-* [`wait_for_pipeline`](@ref)
-* [`collect_solutions`](@ref)
-* [`cancel_pipeline!`](@ref)
+Not part of the official [`Pipeline`](@ref) interface.
 """
 function start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
     is_pipeline_started(pipeline) && error("Pipeline already started")
@@ -115,13 +118,7 @@ end
 Kick off the ParaReal solver by sending the initial value of `prob`.
 Do not wait until all computations are done.
 
-See also:
-
-* [`init_pipeline`](@ref)
-* [`start_pipeline!`](@ref)
-* [`wait_for_pipeline`](@ref)
-* [`collect_solutions`](@ref)
-* [`cancel_pipeline!`](@ref)
+Not part of the official [`Pipeline`](@ref) interface.
 """
 function send_initial_value(pipeline::Pipeline, prob)
     u0 = initialvalue(prob)
@@ -136,13 +133,7 @@ end
 Abandon all computations along the pipeline.
 Do not wait for all the stages to stop.
 
-See also:
-
-* [`init_pipeline`](@ref)
-* [`start_pipeline!`](@ref)
-* [`send_initial_value`](@ref)
-* [`wait_for_pipeline`](@ref)
-* [`collect_solutions`](@ref)
+See [`Pipeline`](@ref) for the official interface.
 """
 function cancel_pipeline!(pl::Pipeline)
     pl.cancelled && return
@@ -158,13 +149,7 @@ end
 Wait for all the pipeline stages to finish.
 Throws an error if the pipeline failed.
 
-See also:
-
-* [`init_pipeline`](@ref)
-* [`start_pipeline!`](@ref)
-* [`send_initial_value`](@ref)
-* [`collect_solutions`](@ref)
-* [`cancel_pipeline!`](@ref)
+Not part of the official [`Pipeline`](@ref) interface.
 """
 function wait_for_pipeline(pl::Pipeline)
     errs = []
