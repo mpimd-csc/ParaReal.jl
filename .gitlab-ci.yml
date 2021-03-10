@@ -36,3 +36,7 @@ Julia 1.4:
 Julia 1.5:
   image: julia:1.5
   <<: *script
+
+Julia 1.6:
+  image: julia:1.6
+  <<: *script
