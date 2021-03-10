@@ -29,6 +29,14 @@ struct Event
     time_received::Float64
 end
 
+"""
+# Pipeline Interface
+
+* [`init_pipeline`](@ref)
+* [`run_pipeline!`](@ref)
+* [`cancel_pipeline!`](@ref)
+* [`collect_solutions`](@ref)
+"""
 Base.@kwdef mutable struct Pipeline
     conns::Vector{MessageChannel}
     results::RemoteChannel

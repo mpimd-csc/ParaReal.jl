@@ -4,13 +4,7 @@
 Initialize a pipeline to eventually run on the worker ids specified by
 `workers`. Do not start the tasks executing the pipeline stages.
 
-See also:
-
-* [`start_pipeline!`](@ref)
-* [`send_initial_value`](@ref)
-* [`wait_for_pipeline`](@ref)
-* [`collect_solutions`](@ref)
-* [`cancel_pipeline!`](@ref)
+See [`Pipeline`](@ref) for the official interface.
 """
 function init_pipeline(workers::Vector{Int})
     conns = map(workers) do w
@@ -55,17 +49,26 @@ function init_pipeline(workers::Vector{Int})
 end
 
 """
+    run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
+
+Create and schedule the tasks executing the pipeline stages.
+Send the initial value of `prob` and wait for the completion of all stages.
+Throws an error if the pipeline failed.
+
+See [`Pipeline`](@ref) for the official interface.
+"""
+function run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
+    start_pipeline!(pipeline, prob, alg; kwargs...)
+    send_initial_value(pipeline, prob)
+    wait_for_pipeline(pipeline)
+end
+
+"""
     start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
 
 Create and schedule the tasks executing the pipeline stages.
 
-See also:
-
-* [`init_pipeline`](@ref)
-* [`send_initial_value`](@ref)
-* [`wait_for_pipeline`](@ref)
-* [`collect_solutions`](@ref)
-* [`cancel_pipeline!`](@ref)
+Not part of the official [`Pipeline`](@ref) interface.
 """
 function start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
     is_pipeline_started(pipeline) && error("Pipeline already started")
@@ -87,8 +90,13 @@ function _eventhandler(pipeline::Pipeline)
         e = Event(i, s, t, time_received)
         push!(eventlog, e)
         status[i] = s
+        # If stage failed, cancel whole pipeline:
+        if isfailed(s)
+            @warn "Cancelling pipeline due to failure on stage $i"
+            cancel_pipeline!(pipeline)
+        end
         # Stop if no further events are to be expected:
-        all(in((:Cancelled, :Done)), pipeline.status) && break
+        isdone(s) && all(isdone, status) && break
     end
     # Signal that events won't be processed anymore.
     # Sending further events will cause an error.
@@ -110,13 +118,7 @@ end
 Kick off the ParaReal solver by sending the initial value of `prob`.
 Do not wait until all computations are done.
 
-See also:
-
-* [`init_pipeline`](@ref)
-* [`start_pipeline!`](@ref)
-* [`wait_for_pipeline`](@ref)
-* [`collect_solutions`](@ref)
-* [`cancel_pipeline!`](@ref)
+Not part of the official [`Pipeline`](@ref) interface.
 """
 function send_initial_value(pipeline::Pipeline, prob)
     u0 = initialvalue(prob)
@@ -131,15 +133,10 @@ end
 Abandon all computations along the pipeline.
 Do not wait for all the stages to stop.
 
-See also:
-
-* [`init_pipeline`](@ref)
-* [`start_pipeline!`](@ref)
-* [`send_initial_value`](@ref)
-* [`wait_for_pipeline`](@ref)
-* [`collect_solutions`](@ref)
+See [`Pipeline`](@ref) for the official interface.
 """
 function cancel_pipeline!(pl::Pipeline)
+    pl.cancelled && return
     pl.cancelled = true
     for c in pl.conns
         put!(c, Cancellation())
@@ -152,23 +149,15 @@ end
 Wait for all the pipeline stages to finish.
 Throws an error if the pipeline failed.
 
-See also:
-
-* [`init_pipeline`](@ref)
-* [`start_pipeline!`](@ref)
-* [`send_initial_value`](@ref)
-* [`collect_solutions`](@ref)
-* [`cancel_pipeline!`](@ref)
+Not part of the official [`Pipeline`](@ref) interface.
 """
 function wait_for_pipeline(pl::Pipeline)
     errs = []
     # Wait for stage executors:
     for t in pl.tasks
-        try
-            wait(t)
-        catch e
-            push!(errs, e)
-        end
+        e = fetch(t)
+        e isa Exception || continue
+        push!(errs, e)
     end
     # Wait for event handler:
     try
@@ -208,12 +197,8 @@ function is_pipeline_failed(pl::Pipeline)
     @unpack tasks = pl
     for t in tasks
         isready(t) || continue
-        try
-            # should return nothing:
-            fetch(t)
-        catch
-            return true
-        end
+        e = fetch(t)
+        e isa Exception && return true
     end
     return false
 end

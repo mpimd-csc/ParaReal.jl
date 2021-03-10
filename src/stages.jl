@@ -5,6 +5,22 @@ function execute_stage(prob,
                 tol = 1e-5,
                )
 
+    try
+        _execute_stage(prob, alg, config; maxiters=maxiters, tol=tol)
+    catch
+        _send_status_update(config, :Failed)
+        rethrow()
+    end
+    nothing
+end
+
+function _execute_stage(
+    prob,
+    alg::Algorithm,
+    config::StageConfig;
+    maxiters = 10,
+    tol = 1e-5,
+)
     _send_status_update(config, :Started)
     @unpack step, nsteps, prev, next, results = config
     finalstage = step == nsteps
@@ -57,7 +73,8 @@ function execute_stage(prob,
     if (k == n || didconverge(msg)) && !converged
         k += 1
         converged = true
-        send_val(config, u_fine, true)
+        cancelled = send_val(config, u_fine, true)
+        cancelled && return
     end
 
     niters = k
