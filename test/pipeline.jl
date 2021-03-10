@@ -97,6 +97,25 @@ n2one = repeat(ws, inner=2)
     test_connections(ids)
 end
 
+function prepare(eventlog, stage)
+    l = filter(e -> e.stage == stage, eventlog)
+    sort!(l; by = e -> e.time_sent)
+    map(e -> e.status, l)
+end
+
+@testset "Event Log" begin
+    global pl = init_pipeline([1, 1])
+    start_pipeline!(pl, prob, alg, maxiters=10)
+    send_initial_value(pl, prob)
+    wait_for_pipeline(pl)
+
+    log = pl.eventlog
+    s1 = prepare(log, 1)
+    s2 = prepare(log, 2)
+    @test s1 == [:Started, :Waiting, :Running, :Done]
+    @test s2 == [:Started, :Waiting, :Running, :Waiting, :Running, :Done]
+end
+
 delay = 5.0 # seconds
 expensive(f) = x -> (sleep(delay); f(x))
 expensive_alg = ParaReal.Algorithm(csolve, expensive(fsolve))
@@ -132,25 +151,6 @@ end
         verbose && @info "Testing cancellation after sending initial value"
         test_cancellation(true, delay+1.0)
     end
-end
-
-function prepare(eventlog, stage)
-    l = filter(e -> e.stage == stage, eventlog)
-    sort!(l; by = e -> e.time_sent)
-    map(e -> e.status, l)
-end
-
-@testset "Event Log" begin
-    global pl = init_pipeline([1, 1])
-    start_pipeline!(pl, prob, alg, maxiters=10)
-    send_initial_value(pl, prob)
-    wait_for_pipeline(pl)
-
-    log = pl.eventlog
-    s1 = prepare(log, 1)
-    s2 = prepare(log, 2)
-    @test s1 == [:Started, :Waiting, :Running, :Done]
-    @test s2 == [:Started, :Waiting, :Running, :Waiting, :Running, :Done]
 end
 
 bang(_) = error("bang")
