@@ -1,4 +1,5 @@
-using ParaReal: local_tspan
+using ParaReal: local_tspan, init_pipeline
+using Test
 
 @testset "local_tspan" begin
     @testset "Covering the original interval" begin
@@ -17,4 +18,16 @@ using ParaReal: local_tspan
         @test local_tspan(2, 5, (0., 1.)) === (0.2, 0.4)
         @test_throws ErrorException local_tspan(2, 5, (0,1))
     end
+end
+
+@testset "Pretty Printing" begin
+    pl = init_pipeline([1, 1, 1])
+    str = repr("text/plain", pl)
+    expected = """
+    Pipeline with 3 stages:
+     stage 1 on worker 1: Initialized
+     stage 2 on worker 1: Initialized
+     stage 3 on worker 1: Initialized
+    """
+    @test str == expected
 end
