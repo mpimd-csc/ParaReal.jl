@@ -58,7 +58,4 @@ NextValue(u) = Message(false, false, u)
 FinalValue(u) = Message(false, true, u)
 Cancellation() = Message(true, false, nothing)
 
-iscancelled(c::RemoteChannel) = isready(c) && iscancelled(fetch(c))
-iscancelled(m::Message) = m.cancelled
-didconverge(m::Message) = m.converged
 nextvalue(m::Message) = m.u
