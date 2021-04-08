@@ -58,9 +58,17 @@ Throws an error if the pipeline failed.
 See [`Pipeline`](@ref) for the official interface.
 """
 function run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
-    start_pipeline!(pipeline, prob, alg; kwargs...)
-    send_initial_value(pipeline, prob)
-    wait_for_pipeline(pipeline)
+    try
+        start_pipeline!(pipeline, prob, alg; kwargs...)
+        send_initial_value(pipeline, prob)
+        wait_for_pipeline(pipeline)
+    catch e
+        if e isa InterruptException
+            @warn "Cancelling pipeline due to interrupt"
+            cancel_pipeline!(pipeline)
+        end
+        rethrow()
+    end
 end
 
 """
