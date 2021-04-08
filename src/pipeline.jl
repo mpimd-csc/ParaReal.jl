@@ -10,19 +10,19 @@ function init_pipeline(workers::Vector{Int})
     conns = map(workers) do w
         RemoteChannel(() -> Channel{Message}(1), w)
     end
-    nsteps = length(workers)
-    results = RemoteChannel(() -> Channel(nsteps))
-    configs = Vector{StageConfig}(undef, nsteps)
+    N = length(workers)
+    results = RemoteChannel(() -> Channel(N))
+    configs = Vector{StageConfig}(undef, N)
 
     status = [:Initialized for _ in workers]
-    events = RemoteChannel(() -> Channel(2nsteps))
+    events = RemoteChannel(() -> Channel(2N))
 
     # Initialize first stages:
-    for i in 1:nsteps-1
-        prev = conns[i]
-        next = conns[i+1]
-        configs[i] = StageConfig(step=i,
-                                 nsteps=nsteps,
+    for n in 1:N-1
+        prev = conns[n]
+        next = conns[n+1]
+        configs[n] = StageConfig(n=n,
+                                 N=N,
                                  prev=prev,
                                  next=next,
                                  results=results,
@@ -30,15 +30,15 @@ function init_pipeline(workers::Vector{Int})
     end
 
     # Initialize final stage:
-    prev = next = conns[nsteps]
+    prev = next = conns[N]
     # Pass a `::ValueChannel` instead of `nothing` as to not trigger another
     # compilation. The value of `next` will never be accessed anyway.
-    configs[nsteps] = StageConfig(step=nsteps,
-                                  nsteps=nsteps,
-                                  prev=prev,
-                                  next=next,
-                                  results=results,
-                                  events=events)
+    configs[N] = StageConfig(n=N,
+                             N=N,
+                             prev=prev,
+                             next=next,
+                             results=results,
+                             events=events)
 
     Pipeline(conns=conns,
              results=results,
@@ -84,15 +84,15 @@ end
 function _eventhandler(pipeline::Pipeline)
     @unpack status, events, eventlog = pipeline
     while true
-        i, s, t = take!(events)
+        n, s, t = take!(events)
         # Process incoming event:
         time_received = time()
-        e = Event(i, s, t, time_received)
+        e = Event(n, s, t, time_received)
         push!(eventlog, e)
-        status[i] = s
+        status[n] = s
         # If stage failed, cancel whole pipeline:
         if isfailed(s)
-            @warn "Cancelling pipeline due to failure on stage $i"
+            @warn "Cancelling pipeline due to failure on stage $n"
             cancel_pipeline!(pipeline)
         end
         # Stop if no further events are to be expected:
@@ -106,8 +106,8 @@ end
 
 function _send_status_update(config::StageConfig, status::Symbol)
     t = time()
-    i = config.step
-    msg = (i, status, t)
+    n = config.n
+    msg = (n, status, t)
     put!(config.events, msg)
     nothing
 end

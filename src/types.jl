@@ -14,8 +14,8 @@ end
 const MessageChannel = RemoteChannel{Channel{Message}}
 
 Base.@kwdef struct StageConfig
-    step::Int # corresponding step in the pipeline
-    nsteps::Int # total number of steps in the pipeline
+    n::Int # corresponding step in the pipeline
+    N::Int # total number of steps in the pipeline
     prev::MessageChannel # where to get new `u0`-values from
     next::MessageChannel # where to put `u0`-values for the next pipeline step
     results::RemoteChannel # where to put the solution objects after convergence
