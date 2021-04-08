@@ -35,7 +35,7 @@ function _execute_stage(
     nconverged = 0
     u = u_coarse = u_fine = nothing
     local k, msg, fsol, converged
-    for outer k in 1:min(n, K-1)
+    for outer k in 1:min(n, K)
         # Receive initial value and initialize local problem instance
         msg, cancelled = receive_val(config)
         cancelled && return
@@ -70,7 +70,7 @@ function _execute_stage(
     end
 
     # Send final solution on to the next stage
-    if (k == n || didconverge(msg)) && !converged
+    if !converged && k < K && (k == n || didconverge(msg))
         k += 1
         converged = true
         cancelled = send_val(config, u_fine, true)
@@ -82,7 +82,7 @@ function _execute_stage(
         @debug "Converged successfully" step niters
     end
 
-    retcode = k >= K && !converged ? :MaxIters : :Success
+    retcode = converged ? :Success : :MaxIters
     sol = LocalSolution(fsol, retcode)
     @debug "Sending results" step
     put!(results, (step, sol)) # Redo? return via `return` instead of channel
