@@ -29,10 +29,6 @@ Julia 1.0:
   image: julia:1.0
   <<: *script
 
-Julia 1.4:
-  image: julia:1.4
-  <<: *script
-
 Julia 1.5:
   image: julia:1.5
   <<: *script
