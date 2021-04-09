@@ -22,7 +22,7 @@ fsolve = prob -> begin
     t0, tf = prob.tspan
     solve(prob, Euler(), dt=(tf-t0)/10)
 end
-alg = ParaReal.Algorithm(csolve, fsolve)
+alg = ParaReal.algorithm(csolve, fsolve)
 
 verbose && @info "Solving DiffEq ODEProblem"
 n = 10

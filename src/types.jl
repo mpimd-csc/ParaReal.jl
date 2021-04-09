@@ -1,9 +1,11 @@
-struct Algorithm{CoarseAlgorithm,
-                         FineAlgorithm,
-                        } <: DiffEqBase.DEAlgorithm
-    coarse::CoarseAlgorithm
-    fine::FineAlgorithm
+abstract type Algorithm end
+
+struct FunctionalAlgorithm <: Algorithm
+    coarse
+    fine
 end
+
+algorithm(csolve, fsolve) = FunctionalAlgorithm(csolve, fsolve)
 
 struct Message
     cancelled::Bool

@@ -22,7 +22,7 @@ verbose && @info "Creating algorithm instance"
     csolve_ode2(prob) = solve(prob, ImplicitEuler(), dt=1.0, adaptive=false)
     fsolve_ode2(prob) = solve(prob, ImplicitEuler(), dt=0.1, adaptive=false)
 end
-alg = ParaReal.Algorithm(csolve_ode2, fsolve_ode2)
+alg = ParaReal.algorithm(csolve_ode2, fsolve_ode2)
 
 verbose && @info "Solving DiffEq ODEProblem"
 w = first(workers())

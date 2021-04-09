@@ -32,7 +32,7 @@ fsolve = prob -> begin
     t0, tf = prob.tspan
     solve(prob, Euler(), dt=(tf-t0)/10)
 end
-alg = ParaReal.Algorithm(csolve, fsolve)
+alg = ParaReal.algorithm(csolve, fsolve)
 
 # Before attempting to run jobs on remote machines, perform a local smoke test
 # to catch stupid mistakes early.
@@ -104,7 +104,7 @@ end
 
 delay = 5.0 # seconds
 expensive(f) = x -> (sleep(delay); f(x))
-expensive_alg = ParaReal.Algorithm(csolve, expensive(fsolve))
+expensive_alg = ParaReal.algorithm(csolve, expensive(fsolve))
 
 @testset "Cancellation before sending initial value" begin
     global pl = init_pipeline(one2one)
@@ -154,7 +154,7 @@ end
 end
 
 bang(_) = error("bang")
-bangbang = ParaReal.Algorithm(bang, bang) # Feuer frei!
+bangbang = ParaReal.algorithm(bang, bang) # Feuer frei!
 
 @testset "Explosions" begin
     verbose && @info "Testing explosions"

@@ -37,7 +37,7 @@ prob = ODEProblem(f, u0, tspan)
 δT = 1.0
 coarse = prob -> solve(prob, ImplicitEuler(), dt=δT, adaptive=false)
 fine   = prob -> solve(prob, ImplicitEuler(), dt=δt, adaptive=false)
-alg = ParaReal.Algorithm(coarse, fine)
+alg = ParaReal.algorithm(coarse, fine)
 
 @info "Starting solver"
 _, t[2], _, _, _ = @timed sol = solve(prob, alg, maxiters=5)
