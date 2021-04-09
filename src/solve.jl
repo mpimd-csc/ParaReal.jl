@@ -1,5 +1,3 @@
-DiffEqBase.solve(prob::DiffEqBase.DEProblem, alg::Algorithm; kwargs...) = solve(prob, alg; kwargs...)
-
 function solve(
     prob,
     alg::Algorithm;

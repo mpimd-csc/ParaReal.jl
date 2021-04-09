@@ -30,4 +30,6 @@ include("solve.jl")
 
 include("utils.jl")
 
+include("diffeq.jl")
+
 end # module
