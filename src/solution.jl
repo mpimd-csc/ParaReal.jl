@@ -35,16 +35,16 @@ function collect_solutions(pipeline::Pipeline)
     wait_for_pipeline(pipeline)
 
     @unpack results, workers = pipeline
-    nsteps = length(workers)
+    N = length(workers)
 
     # Collect local solutions. Sorting them shouldn't be necessary,
     # but as there is networking involved, we're rather safe than sorry:
-    step, sol = take!(results)
-    sols = Vector{typeof(sol)}(undef, nsteps)
-    sols[step] = sol
-    for _ in 1:nsteps-1
-        step, sol = take!(results)
-        sols[step] = sol
+    n, sol = take!(results)
+    sols = Vector{typeof(sol)}(undef, N)
+    sols[n] = sol
+    for _ in 1:N-1
+        n, sol = take!(results)
+        sols[n] = sol
     end
     GlobalSolution(sols)
 end
@@ -56,24 +56,6 @@ Try to assemble a global solution of the same type as the local solutions.
 Defaults to just returning the "internal" `sol::GlobalSolution`.
 """
 assemble_solution(prob, alg, sol) = sol
-
-function assemble_solution(
-    prob::DiffEqBase.DEProblem,
-    alg,
-    gsol::GlobalSolution{S},
-) where {S <: DiffEqBase.AbstractTimeseriesSolution}
-    tType = typeof(prob.tspan[1])
-    uType = typeof(initialvalue(prob))
-
-    ts = Vector{tType}(undef, 0)
-    us = Vector{uType}(undef, 0)
-    for lsol in gsol.sols
-        append!(ts, lsol.t)
-        append!(us, lsol.u)
-    end
-
-    DiffEqBase.build_solution(prob, alg, ts, us, retcode=gsol.retcode)
-end
 
 """
     nextvalue(sol)

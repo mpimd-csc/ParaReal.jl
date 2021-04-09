@@ -1,18 +1,18 @@
-function local_tspan(step::Integer, n::Integer, tspan::Tuple{T,T}) where T <: Integer
+function local_tspan(n::Integer, N::Integer, tspan::Tuple{T,T}) where T <: Integer
     t0, tf = tspan
-    t0′ = (n-step+1)*t0 + (step-1)*tf
-    tf′ = (n-step)  *t0 + (step)  *tf
-    t0′ ÷= n
-    tf′ ÷= n
-    t0′ == tf′ && error("Empty tspan for step $step out of $n")
+    t0′ = (N-n+1)*t0 + (n-1)*tf
+    tf′ = (N-n)  *t0 + (n)  *tf
+    t0′ ÷= N
+    tf′ ÷= N
+    t0′ == tf′ && error("Empty tspan for stage $n out of $N")
     (t0′, tf′)
 end
 
-function local_tspan(step::Integer, n::Integer, tspan::Tuple{T,T}) where T
+function local_tspan(n::Integer, N::Integer, tspan::Tuple{T,T}) where T
     t0, tf = tspan
-    t0′ = (n-step+1)*t0 + (step-1)*tf
-    tf′ = (n-step)  *t0 + (step)  *tf
-    t0′ /= n
-    tf′ /= n
+    t0′ = (N-n+1)*t0 + (n-1)*tf
+    tf′ = (N-n)  *t0 + (n)  *tf
+    t0′ /= N
+    tf′ /= N
     (t0′, tf′)
 end

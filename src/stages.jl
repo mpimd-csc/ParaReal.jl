@@ -22,20 +22,18 @@ function _execute_stage(
     tol = 1e-5,
 )
     _send_status_update(config, :Started)
-    @unpack step, nsteps, prev, next, results = config
-    finalstage = step == nsteps
+    @unpack n, N, prev, next, results = config
+    finalstage = n == N
 
-    n = step
-    N = nsteps
     K = maxiters
     @assert K >= 1
-    tspan = local_tspan(step, nsteps, prob.tspan)
+    tspan = local_tspan(n, N, prob.tspan)
 
-    @debug "Waiting for data" step pid=D.myid() tid=T.threadid()
+    @debug "Waiting for data" n pid=D.myid() tid=T.threadid()
     nconverged = 0
     u = u_coarse = u_fine = nothing
     local k, msg, fsol, converged
-    for outer k in 1:min(n, K-1)
+    for outer k in 1:min(n, K)
         # Receive initial value and initialize local problem instance
         msg, cancelled = receive_val(config)
         cancelled && return
@@ -70,23 +68,22 @@ function _execute_stage(
     end
 
     # Send final solution on to the next stage
-    if (k == n || didconverge(msg)) && !converged
+    if !converged && k < K && (k == n || didconverge(msg))
         k += 1
         converged = true
         cancelled = send_val(config, u_fine, true)
         cancelled && return
     end
 
-    niters = k
     if converged
-        @debug "Converged successfully" step niters
+        @debug "Converged successfully" n k
     end
 
-    retcode = k >= K && !converged ? :MaxIters : :Success
+    retcode = converged ? :Success : :MaxIters
     sol = LocalSolution(fsol, retcode)
-    @debug "Sending results" step
-    put!(results, (step, sol)) # Redo? return via `return` instead of channel
-    @debug "Finished" step niters
+    @debug "Sending results" n
+    put!(results, (n, sol))
+    @debug "Finished" n k
     _send_status_update(config, :Done)
     nothing
 end
@@ -125,8 +122,8 @@ function receive_val(config::StageConfig)
 end
 
 function send_val(config::StageConfig, u, isfinal::Bool)
-    @unpack prev, next, step, nsteps = config
-    finalstage = step == nsteps
+    @unpack prev, next, n, N = config
+    finalstage = n == N
 
     cancelled = check_cancellation(config, prev)
     cancelled && return true
