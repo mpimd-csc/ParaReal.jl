@@ -106,8 +106,8 @@ Compute the high-accurary / fine solution `fsol` of the given problem `prob`.
 """
 function fsolve end
 
-csolve(prob, alg::Algorithm) = alg.coarse(prob)
-fsolve(prob, alg::Algorithm) = alg.fine(prob)
+csolve(prob, alg::FunctionalAlgorithm) = alg.coarse(prob)
+fsolve(prob, alg::FunctionalAlgorithm) = alg.fine(prob)
 
 function check_cancellation(config::StageConfig, x)
     iscancelled(x) || return false
@@ -144,7 +144,7 @@ solutions `u_fine` and `u_coarse′`. Defaults to `copy(u_coarse)`.
 
 When defining a new problem or algorithm, you may need to add a new method for this function.
 """
-function update_sol!(_prob, _alg, u::Nothing, u_fine::Nothing, u_coarse, u_coarse′::Nothing)
+function update_sol!(_prob, _alg::Algorithm, u::Nothing, u_fine::Nothing, u_coarse, u_coarse′::Nothing)
     copy(u_coarse)
 end
 
