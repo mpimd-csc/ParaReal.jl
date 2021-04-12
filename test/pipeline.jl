@@ -8,15 +8,6 @@ ws = workers()[1:2]
 using ParaReal, DifferentialEquations
 @everywhere using ParaReal, DifferentialEquations
 
-using ParaReal: init_pipeline,
-                run_pipeline!,
-                cancel_pipeline!,
-                collect_solutions,
-                is_pipeline_started,
-                is_pipeline_done,
-                is_pipeline_cancelled,
-                is_pipeline_failed
-
 verbose && @info "Creating problem instance"
 du = (u, _p, _t) -> u
 u0 = [1.]
