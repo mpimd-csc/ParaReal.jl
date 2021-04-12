@@ -11,7 +11,10 @@ const PR = ParaReal
     include("utils.jl")
     @testset "Pipeline Interface" begin include("pipeline.jl") end
     @testset "Problem Types" begin
-        @testset "diffeq ODE" begin include("problems/diffeq-ode.jl") end
+        @testset "diffeq ODE" begin
+            include("problems/diffeq-ode.jl")
+            include("problems/diffeq-ode2.jl")
+        end
         @testset "non-diffeq" begin include("problems/non-diffeq.jl") end
     end
 end

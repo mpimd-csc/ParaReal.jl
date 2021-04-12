@@ -31,7 +31,7 @@ function _execute_stage(
 
     @debug "Waiting for data" n pid=D.myid() tid=T.threadid()
     nconverged = 0
-    u = u_coarse = u_fine = nothing
+    u′ = u = u_coarse = u_fine = nothing
     local k, msg, fsol, converged
     for outer k in 1:min(n, K)
         # Receive initial value and initialize local problem instance
@@ -45,7 +45,7 @@ function _execute_stage(
         u_coarse  = nextvalue(csolve(prob, alg))
 
         # Compute refined solution k
-        u′ = u
+        u′ = backup!(u′, u)
         u  = update_sol!(prob, alg, u, u_fine, u_coarse, u_coarse′)
 
         # If the refined solution fulfills the convergence criterion,
@@ -159,3 +159,7 @@ end
 
 sol_converged(u′::Nothing, u; tol) = false
 sol_converged(u′, u; tol) = isapprox(u′, u; rtol=tol)
+
+backup!(x′::Nothing, x::Nothing) = nothing
+backup!(x′::Nothing, x) = copy(x)
+backup!(x′::Vector{T}, x::Vector{T}) where {T} = copyto!(x′, x)

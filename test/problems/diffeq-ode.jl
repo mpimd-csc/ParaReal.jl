@@ -26,12 +26,15 @@ alg = ParaReal.Algorithm(csolve, fsolve)
 
 verbose && @info "Solving DiffEq ODEProblem"
 n = 10
-ids = fill(first(workers()), n)
+w = first(workers())
+ids = fill(w, n)
 sol = solve(prob, alg, workers=ids, maxiters=n)
-ref = solve(prob, Euler(), dt=1/10n)
+
+# Compute reference solution elsewhere to "skip" compilation:
+ref = @fetchfrom w solve(prob, Euler(), dt=1/10n)
 
 @test sol isa DiffEqBase.AbstractODESolution
 @test sol.retcode == :Success
-@test sol[end] ≈ ref[end] rtol=0.001
+@test sol[end] ≈ ref[end] rtol=1e-5
 @test sol[end] ≈ [ℯ] rtol=0.01
 
