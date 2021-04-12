@@ -33,11 +33,11 @@ tspan = (0., 100.)
 prob = ODEProblem(f, u0, tspan)
 
 @info "Creating algorithm instance"
-δt = 0.1
-δT = 1.0
-coarse = prob -> solve(prob, ImplicitEuler(), dt=δT, adaptive=false)
-fine   = prob -> solve(prob, ImplicitEuler(), dt=δt, adaptive=false)
-alg = ParaReal.algorithm(coarse, fine)
+@everywhere begin
+    csolve(prob) = solve(prob, ImplicitEuler(), dt=1.0, adaptive=false)
+    fsolve(prob) = solve(prob, ImplicitEuler(), dt=0.1, adaptive=false)
+end
+alg = ParaReal.algorithm(csolve, fsolve)
 
 @info "Starting solver"
 _, t[2], _, _, _ = @timed sol = solve(prob, alg, maxiters=5)

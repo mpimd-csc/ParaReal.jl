@@ -14,15 +14,17 @@ tspan = (0., 1.)
 prob = ODEProblem(du, u0, tspan)
 
 verbose && @info "Creating algorithm instance"
-csolve = prob -> begin
-    t0, tf = prob.tspan
-    solve(prob, Euler(), dt=tf-t0)
+@everywhere begin
+    csolve_ode(prob) = begin
+        t0, tf = prob.tspan
+        solve(prob, Euler(), dt=tf-t0)
+    end
+    fsolve_ode(prob) = begin
+        t0, tf = prob.tspan
+        solve(prob, Euler(), dt=(tf-t0)/10)
+    end
 end
-fsolve = prob -> begin
-    t0, tf = prob.tspan
-    solve(prob, Euler(), dt=(tf-t0)/10)
-end
-alg = ParaReal.algorithm(csolve, fsolve)
+alg = ParaReal.algorithm(csolve_ode, fsolve_ode)
 
 verbose && @info "Solving DiffEq ODEProblem"
 n = 10
