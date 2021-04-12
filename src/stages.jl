@@ -1,12 +1,11 @@
 function execute_stage(prob,
                 alg::Algorithm,
                 config::StageConfig;
-                maxiters = 10,
-                tol = 1e-5,
+                kwargs...
                )
 
     try
-        _execute_stage(prob, alg, config; maxiters=maxiters, tol=tol)
+        _execute_stage(prob, alg, config; kwargs...)
     catch
         _send_status_update(config, :Failed)
         rethrow()
@@ -20,6 +19,7 @@ function _execute_stage(
     config::StageConfig;
     maxiters = 10,
     tol = 1e-5,
+    nconverged = 2,
 )
     _send_status_update(config, :Started)
     @unpack n, N, prev, next, results = config
@@ -30,8 +30,8 @@ function _execute_stage(
     tspan = local_tspan(n, N, prob.tspan)
 
     @debug "Waiting for data" n pid=D.myid() tid=T.threadid()
-    nconverged = 0
-    u = u_coarse = u_fine = nothing
+    _nconverged = 0
+    u′ = u = u_coarse = u_fine = nothing
     local k, msg, fsol, converged
     for outer k in 1:min(n, K)
         # Receive initial value and initialize local problem instance
@@ -45,13 +45,17 @@ function _execute_stage(
         u_coarse  = nextvalue(csolve(prob, alg))
 
         # Compute refined solution k
-        u′ = u
+        u′ = backup!(u′, u)
         u  = update_sol!(prob, alg, u, u_fine, u_coarse, u_coarse′)
 
         # If the refined solution fulfills the convergence criterion,
         # perform a few iterations more to smooth out some more errors.
-        nconverged += sol_converged(u′, u; tol=tol)
-        converged = nconverged >= 2
+        if sol_converged(u′, u; tol=tol)
+            _nconverged += 1
+        else
+            _nconverged = 0
+        end
+        converged = _nconverged >= nconverged
 
         # Send correction of coarse solution on to the next stage
         cancelled = send_val(config, u, converged)
@@ -159,3 +163,7 @@ end
 
 sol_converged(u′::Nothing, u; tol) = false
 sol_converged(u′, u; tol) = isapprox(u′, u; rtol=tol)
+
+backup!(x′::Nothing, x::Nothing) = nothing
+backup!(x′::Nothing, x) = copy(x)
+backup!(x′::Vector{T}, x::Vector{T}) where {T} = copyto!(x′, x)
