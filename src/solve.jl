@@ -32,7 +32,7 @@ function solve(
     run_pipeline!(pipeline, prob, alg; kwargs...)
 
     @debug "Collecting local solutions"
-    sol = collect_solutions(pipeline)
+    sol = collect_solutions!(pipeline)
 
     @debug "Reassembling global solution"
     return assemble_solution(prob, alg, sol)

@@ -61,11 +61,12 @@ end
 * [`init_pipeline`](@ref)
 * [`run_pipeline!`](@ref)
 * [`cancel_pipeline!`](@ref)
-* [`collect_solutions`](@ref)
+* [`collect_solutions!`](@ref)
 """
 Base.@kwdef mutable struct Pipeline
     conns::Vector{MessageChannel}
     results::RemoteChannel
+    sol::Union{GlobalSolution, Nothing} = nothing
 
     # Worker stages:
     workers::Vector{Int}

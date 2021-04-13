@@ -72,14 +72,16 @@ function run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
 end
 
 """
-    collect_solutions(pipeline::Pipeline)
+    collect_solutions!(pipeline::Pipeline)
 
 Wait for the pipeline to finish and return a [`GlobalSolution`](@ref) of all
 solutions for the smaller time slices (in order).
 
 See [`Pipeline`](@ref) for the official interface.
 """
-function collect_solutions(pipeline::Pipeline)
+function collect_solutions!(pipeline::Pipeline)
+    pipeline.sol === nothing || return pipeline.sol
+
     # Check for errors:
     wait_for_pipeline(pipeline)
 
@@ -95,7 +97,7 @@ function collect_solutions(pipeline::Pipeline)
         n, sol = take!(results)
         sols[n] = sol
     end
-    GlobalSolution(sols)
+    pipeline.sol = GlobalSolution(sols)
 end
 
 """
