@@ -72,6 +72,33 @@ function run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
 end
 
 """
+    collect_solutions(pipeline::Pipeline)
+
+Wait for the pipeline to finish and return a [`GlobalSolution`](@ref) of all
+solutions for the smaller time slices (in order).
+
+See [`Pipeline`](@ref) for the official interface.
+"""
+function collect_solutions(pipeline::Pipeline)
+    # Check for errors:
+    wait_for_pipeline(pipeline)
+
+    @unpack results, workers = pipeline
+    N = length(workers)
+
+    # Collect local solutions. Sorting them shouldn't be necessary,
+    # but as there is networking involved, we're rather safe than sorry:
+    n, sol = take!(results)
+    sols = Vector{typeof(sol)}(undef, N)
+    sols[n] = sol
+    for _ in 1:N-1
+        n, sol = take!(results)
+        sols[n] = sol
+    end
+    GlobalSolution(sols)
+end
+
+"""
     start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
 
 Create and schedule the tasks executing the pipeline stages.

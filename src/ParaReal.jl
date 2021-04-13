@@ -33,7 +33,6 @@ include("stages.jl")
 include("pipeline.jl")
 include("status.jl")
 
-include("solution.jl")
 include("problem.jl")
 include("solve.jl")
 
