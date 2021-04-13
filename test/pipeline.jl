@@ -8,15 +8,6 @@ ws = workers()[1:2]
 using ParaReal, DifferentialEquations
 @everywhere using ParaReal, DifferentialEquations
 
-using ParaReal: init_pipeline,
-                run_pipeline!,
-                cancel_pipeline!,
-                collect_solutions,
-                is_pipeline_started,
-                is_pipeline_done,
-                is_pipeline_cancelled,
-                is_pipeline_failed
-
 verbose && @info "Creating problem instance"
 du = (u, _p, _t) -> u
 u0 = [1.]
@@ -54,13 +45,17 @@ function test_connections(ids)
     @test_throws Exception run_pipeline!(pl, prob, alg, maxiters=10)
 
     verbose && @info "Collecting solutions"
-    sol = collect_solutions(pl)
+    sol = collect_solutions!(pl)
     @test !is_pipeline_failed(pl)
     @test pl.status == [:Done for _ in ids]
 
     # All spawned tasks should have finished by now.
     @test all(isready, pl.tasks)
     @test istaskdone(pl.eventhandler)
+
+    # It is safe to retrieve solution twice:
+    sol′ = collect_solutions!(pl)
+    @test sol === sol′
 end
 
 @testset "Smoke Test" begin

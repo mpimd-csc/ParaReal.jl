@@ -19,12 +19,20 @@ using UnPack: @unpack
 const T = Base.Threads
 const D = Distributed
 
+export init_pipeline,
+       run_pipeline!,
+       cancel_pipeline!,
+       collect_solutions!
+export is_pipeline_started,
+       is_pipeline_done,
+       is_pipeline_cancelled,
+       is_pipeline_failed
+
 include("types.jl")
 include("stages.jl")
 include("pipeline.jl")
 include("status.jl")
 
-include("solution.jl")
 include("problem.jl")
 include("solve.jl")
 

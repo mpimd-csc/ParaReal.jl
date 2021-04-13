@@ -32,16 +32,41 @@ struct Event
 end
 
 """
+Local solution over a single time slice
+"""
+struct LocalSolution{S}
+    sol::S
+    retcode::Symbol
+end
+
+"""
+Global solution over the whole time span
+"""
+struct GlobalSolution{S}
+    sols::Vector{S}
+    retcodes::Vector{Symbol}
+    retcode::Symbol
+
+    function GlobalSolution(lsols::Vector{LocalSolution{S}}) where {S}
+        sols = [s.sol for s in lsols]
+        retcodes = [s.retcode for s in lsols]
+        retcode = all(==(:Success), retcodes) ? :Success : :MaxIters
+        new{S}(sols, retcodes, retcode)
+    end
+end
+
+"""
 # Pipeline Interface
 
 * [`init_pipeline`](@ref)
 * [`run_pipeline!`](@ref)
 * [`cancel_pipeline!`](@ref)
-* [`collect_solutions`](@ref)
+* [`collect_solutions!`](@ref)
 """
 Base.@kwdef mutable struct Pipeline
     conns::Vector{MessageChannel}
     results::RemoteChannel
+    sol::Union{GlobalSolution, Nothing} = nothing
 
     # Worker stages:
     workers::Vector{Int}
@@ -60,4 +85,11 @@ NextValue(u) = Message(false, false, u)
 FinalValue(u) = Message(false, true, u)
 Cancellation() = Message(true, false, nothing)
 
+"""
+    nextvalue(sol)
+
+Extract the initial value for the next ParaReal iteration.
+Defaults to `sol[end]`.
+"""
+nextvalue(sol) = sol[end]
 nextvalue(m::Message) = m.u
