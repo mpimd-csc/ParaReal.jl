@@ -3,7 +3,6 @@ module ParaReal
 import CommonSolve: solve
 
 import Base.Threads,
-       DiffEqBase,
        Distributed
 
 using Base.Iterators: countfrom, repeat
@@ -17,6 +16,7 @@ using Distributed: Future,
                    @spawnat
 using LinearAlgebra: norm
 using UnPack: @unpack
+using Requires
 
 const T = Base.Threads
 const D = Distributed
@@ -31,6 +31,10 @@ export is_pipeline_started,
        is_pipeline_cancelled,
        is_pipeline_failed
 
+function __init__()
+    @require DiffEqBase="2b5f629d-d688-5b77-993f-72d75c75574e" include("diffeq.jl")
+end
+
 include("types.jl")
 include("stages.jl")
 include("pipeline.jl")
@@ -41,7 +45,5 @@ include("solve.jl")
 
 include("utils.jl")
 include("show.jl")
-
-include("diffeq.jl")
 
 end # module
