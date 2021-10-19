@@ -4,8 +4,8 @@ verbose = isinteractive()
 verbose && @info "Verifying setup"
 nprocs() == 1 && addprocs(1)
 
-using ParaReal, DifferentialEquations
-@everywhere using ParaReal, DifferentialEquations
+using ParaReal, OrdinaryDiffEq
+@everywhere using ParaReal, OrdinaryDiffEq
 
 verbose && @info "Creating problem instance"
 du = (u, _p, _t) -> u
