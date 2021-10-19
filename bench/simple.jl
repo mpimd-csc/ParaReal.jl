@@ -16,7 +16,7 @@ end
 @info "... took $(t[1])"
 @info "Loading remaining modules"
 @everywhere begin
-    using DifferentialEquations
+    using OrdinaryDiffEq
     using LinearAlgebra
 
     BLAS.set_num_threads(1)
@@ -30,7 +30,7 @@ end
 end
 u0 = [1., 0.]
 tspan = (0., 100.)
-prob = ODEProblem(f, u0, tspan)
+prob = ParaReal.problem(ODEProblem(f, u0, tspan))
 
 @info "Creating algorithm instance"
 @everywhere begin

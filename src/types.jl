@@ -1,3 +1,14 @@
+abstract type Problem end
+
+struct WrappedProblem <: Problem
+    p
+end
+
+problem(p) = WrappedProblem(p)
+
+unwrap(p::WrappedProblem) = p.p
+unwrap(p) = p
+
 abstract type Algorithm end
 
 struct FunctionalAlgorithm <: Algorithm

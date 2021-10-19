@@ -30,7 +30,7 @@ verbose && @info "Solving DiffEq ODEProblem"
 n = 10
 w = first(workers())
 ids = fill(w, n)
-sol = solve(prob, alg, workers=ids, maxiters=n)
+sol = solve(ParaReal.problem(prob), alg, workers=ids, maxiters=n)
 
 # Compute reference solution elsewhere to "skip" compilation:
 ref = @fetchfrom w solve(prob, Euler(), dt=1/10n)

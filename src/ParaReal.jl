@@ -1,5 +1,7 @@
 module ParaReal
 
+import CommonSolve: solve
+
 import Base.Threads,
        DiffEqBase,
        Distributed
@@ -19,6 +21,7 @@ using UnPack: @unpack
 const T = Base.Threads
 const D = Distributed
 
+export solve
 export init_pipeline,
        run_pipeline!,
        cancel_pipeline!,

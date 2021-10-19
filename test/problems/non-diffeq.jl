@@ -10,7 +10,7 @@ using ParaReal
 verbose && @info "Defining new problem and solution types"
 @everywhere begin
     # Define problem and solution types
-    struct SomeProblem{T} X0::T; tspan; end
+    struct SomeProblem{T} <: ParaReal.Problem X0::T; tspan; end
     struct SomeSolution{T} Xs::Vector{T} end
 
     # Implement interface

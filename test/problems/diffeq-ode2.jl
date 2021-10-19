@@ -27,7 +27,7 @@ alg = ParaReal.algorithm(csolve_ode2, fsolve_ode2)
 verbose && @info "Solving DiffEq ODEProblem"
 w = first(workers())
 ids = fill(w, 10)
-sol = solve(prob, alg, workers=ids, maxiters=5)
+sol = solve(ParaReal.problem(prob), alg, workers=ids, maxiters=5)
 
 # Compute reference solution elsewhere to "skip" compilation:
 ref = @fetchfrom w fsolve_ode2(prob)
