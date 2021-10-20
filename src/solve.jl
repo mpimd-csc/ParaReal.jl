@@ -12,11 +12,12 @@ Only if `nconverged` successive refinements show a relative change of
 at most `tol`, the corresponding time slice is considered convergent.
 """
 function solve(
-    prob,
+    p::Problem,
     alg::Algorithm;
     workers = workers(),
     kwargs...
     )
+    prob = unwrap(p)
 
     D.myid() in workers &&
         error("Cannot use the managing process as a worker process (FIXME)")

@@ -5,8 +5,8 @@ verbose && @info "Verifying setup"
 nprocs() < 3 && addprocs(3-nprocs())
 ws = workers()[1:2]
 
-using ParaReal, DifferentialEquations
-@everywhere using ParaReal, DifferentialEquations
+using ParaReal, OrdinaryDiffEq
+@everywhere using ParaReal, OrdinaryDiffEq
 
 verbose && @info "Creating problem instance"
 du = (u, _p, _t) -> u

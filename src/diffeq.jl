@@ -1,6 +1,4 @@
-function DiffEqBase.solve(prob::DiffEqBase.DEProblem, alg::Algorithm; kwargs...)
-    solve(prob, alg; kwargs...)
-end
+import .DiffEqBase
 
 function remake_prob!(prob::DiffEqBase.DEProblem, _alg, u0, tspan)
     DiffEqBase.remake(prob; u0=u0, tspan=tspan) # copies :-(
