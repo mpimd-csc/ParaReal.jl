@@ -14,25 +14,14 @@ cache:
     - .julia/packages
     - .julia/compiled
 
-.definitions:
-  script: &script
-    script:
-      - julia -e '
-          using InteractiveUtils;
-          versioninfo()'
-      - julia --project=@. -e '
-          using Pkg;
-          Pkg.build();
-          Pkg.test();'
-
-Julia 1.0:
-  image: julia:1.0
-  <<: *script
-
-Julia 1.5:
-  image: julia:1.5
-  <<: *script
-
-Julia 1.6:
-  image: julia:1.6
-  <<: *script
+test:
+  image: julia:${JULIA_VERSION}
+  script:
+    - julia -e 'using InteractiveUtils; versioninfo()'
+    - julia --project -e 'using Pkg; Pkg.build(); Pkg.test();'
+  parallel:
+    matrix:
+      - JULIA_VERSION:
+          - '1.0'
+          - '1.5'
+          - '1.6'
