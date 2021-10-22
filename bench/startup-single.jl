@@ -1,25 +1,32 @@
-using Distributed
+using Distributed, SlurmClusterManager
+
+@info "Using project $(Base.active_project())"
 
 if nprocs() == 1
-    @info "Spawning workers"
-    addprocs(4)
+    if "SLURM_JOBID" in keys(ENV) || "SLURM_JOB_ID" in keys(ENV)
+        @info "Spawning workers using Slurm"
+        addprocs(SlurmManager())
+    else
+        @info "Spawning workers locally"
+        addprocs(4)
+    end
     @info "Connecting to workers"
     @everywhere 1+1
 end
 
-t = zeros(2)
+tic() = time_ns()
+toc(t) = (time_ns() - t) / 1e9
 
 @info "Loading ParaReal"
-_, t[1], _, _, _ = @timed begin
-    @everywhere using ParaReal
-end
-@info "... took $(t[1])"
+t_load = @elapsed(@everywhere using ParaReal)
+@info "... took $t_load seconds"
 @info "Loading remaining modules"
 @everywhere begin
     using OrdinaryDiffEq
     using LinearAlgebra
 
-    BLAS.set_num_threads(1)
+    nt = parse(Int, get(ENV, "SLURM_CPUS_PER_TASK", "1"))
+    BLAS.set_num_threads(nt)
 end
 
 @info "Creating problem instance (Bargo2009)"
@@ -40,6 +47,7 @@ end
 alg = ParaReal.algorithm(csolve, fsolve)
 
 @info "Starting solver"
-_, t[2], _, _, _ = @timed sol = solve(prob, alg, maxiters=5)
-@info "... took $(t[2])"
+t_solve = @elapsed(sol = solve(prob, alg, maxiters=5))
+@info "... took $t_solve seconds"
 
+println(t_load, ", ", t_solve)
