@@ -1,18 +1,18 @@
 using Distributed, SlurmClusterManager
 
-@info "Using project $(Base.active_project())"
-
 if nprocs() == 1
     if "SLURM_JOBID" in keys(ENV) || "SLURM_JOB_ID" in keys(ENV)
         @info "Spawning workers using Slurm"
         addprocs(SlurmManager())
     else
         @info "Spawning workers locally"
-        addprocs(4)
+        addprocs(4; exeflags=["--project"])
     end
     @info "Connecting to workers"
     @everywhere 1+1
 end
+
+@info "Using project" project=map(w -> remotecall_fetch(Base.active_project, w), procs())
 
 tic() = time_ns()
 toc(t) = (time_ns() - t) / 1e9

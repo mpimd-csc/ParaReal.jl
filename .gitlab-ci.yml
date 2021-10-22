@@ -43,8 +43,10 @@ benchmark:
     - if: '$CI_COMMIT_BRANCH =~ /^bench/'
   script:
     - cd bench
+    - julia --project -e 'using Pkg; Pkg.instantiate()'
     - echo 'run, t_load, t_solve' > startup.csv
     - julia --project startup-double.jl >> startup.csv
+    - julia --project -e "using Test, DelimitedFiles; m = readdlm(\"startup.csv\", ','); @test size(m) == (3,3)"
   artifacts:
     paths:
       - bench/startup.csv
