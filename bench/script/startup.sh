@@ -2,11 +2,11 @@
 #SBATCH -J bench
 #SBATCH -o %x-%j.out
 #SBATCH -e %x-%j.err
-#SBATCH -n 4
-#SBATCH -c 4
-#SBATCH --time=1:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=4
+#SBATCH --time=15:00
 #SBATCH --partition=short
-#SBATCH --mail-type=FAIL,BEGIN,END
+#SBATCH --mail-type=FAIL,END
 #SBATCH --mail-user=jschulze@mpi-magdeburg.mpg.de
 
 set -e
