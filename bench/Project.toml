@@ -1,0 +1,4 @@
+[deps]
+OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
+ParaReal = "d8ab9f86-dde6-11e9-3216-afd74457b932"
+SlurmClusterManager = "c82cd089-7bf7-41d7-976b-6b5d413cbe0a"
