@@ -85,7 +85,7 @@ function collect_solutions!(pipeline::Pipeline)
     # Check for errors:
     wait_for_pipeline(pipeline)
 
-    @unpack results, workers = pipeline
+    @unpack results, workers, eventlog = pipeline
     N = length(workers)
 
     # Collect local solutions. Sorting them shouldn't be necessary,
@@ -97,7 +97,7 @@ function collect_solutions!(pipeline::Pipeline)
         n, sol = take!(results)
         sols[n] = sol
     end
-    pipeline.sol = GlobalSolution(sols)
+    pipeline.sol = GlobalSolution(sols, eventlog)
 end
 
 """

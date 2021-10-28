@@ -57,12 +57,13 @@ struct GlobalSolution{S}
     sols::Vector{S}
     retcodes::Vector{Symbol}
     retcode::Symbol
+    eventlog::Vector{Event}
 
-    function GlobalSolution(lsols::Vector{LocalSolution{S}}) where {S}
+    function GlobalSolution(lsols::Vector{LocalSolution{S}}, eventlog) where {S}
         sols = [s.sol for s in lsols]
         retcodes = [s.retcode for s in lsols]
         retcode = all(==(:Success), retcodes) ? :Success : :MaxIters
-        new{S}(sols, retcodes, retcode)
+        new{S}(sols, retcodes, retcode, eventlog)
     end
 end
 
