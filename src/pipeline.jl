@@ -130,7 +130,10 @@ function _eventhandler(pipeline::Pipeline)
         # If stage failed, cancel whole pipeline:
         if isfailed(s)
             @warn "Cancelling pipeline due to failure on stage $n"
-            cancel_pipeline!(pipeline)
+            @async cancel_pipeline!(pipeline)
+            # FIXME: Above task might leak, though in most situations this is
+            # fine. This happens e.g. due to an undefined function, so it is a
+            # symptom of a bigger problem.
         end
         # Stop if no further events are to be expected:
         isdone(s) && all(isdone, status) && break
