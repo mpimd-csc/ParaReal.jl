@@ -31,7 +31,4 @@ function solve(
 
     @debug "Starting worker tasks"
     run_pipeline!(pipeline, prob, alg; kwargs...)
-
-    @debug "Collecting local solutions"
-    return collect_solutions!(pipeline)
 end

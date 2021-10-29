@@ -24,8 +24,7 @@ const D = Distributed
 export solve
 export init_pipeline,
        run_pipeline!,
-       cancel_pipeline!,
-       collect_solutions!
+       cancel_pipeline!
 export is_pipeline_started,
        is_pipeline_done,
        is_pipeline_cancelled,

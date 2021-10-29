@@ -64,6 +64,7 @@ struct GlobalSolution
     function GlobalSolution(sols, eventlog)
         fetch_from_owner(f, rr) = remotecall_fetch(f∘fetch, rr.where, rr)
         retcodes = map(sols) do rsol
+            isready(rsol) || return :Unknown
             fetch_from_owner(sol -> sol.retcode, rsol)
         end
         retcode = all(==(:Success), retcodes) ? :Success : :MaxIters
@@ -77,7 +78,6 @@ end
 * [`init_pipeline`](@ref)
 * [`run_pipeline!`](@ref)
 * [`cancel_pipeline!`](@ref)
-* [`collect_solutions!`](@ref)
 """
 Base.@kwdef mutable struct Pipeline
     conns::Vector{MessageChannel}

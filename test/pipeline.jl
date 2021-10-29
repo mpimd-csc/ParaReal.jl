@@ -39,13 +39,9 @@ function test_connections(ids)
     @test pl.status[1] == :Initialized
 
     verbose && @info "Starting worker tasks"
-    run_pipeline!(pl, prob, alg, maxiters=10)
+    sol = run_pipeline!(pl, prob, alg, maxiters=10)
     @test is_pipeline_started(pl)
     @test is_pipeline_done(pl)
-    @test_throws Exception run_pipeline!(pl, prob, alg, maxiters=10)
-
-    verbose && @info "Collecting solutions"
-    sol = collect_solutions!(pl)
     @test !is_pipeline_failed(pl)
     @test pl.status == [:Done for _ in ids]
 
@@ -54,7 +50,7 @@ function test_connections(ids)
     @test istaskdone(pl.eventhandler)
 
     # It is safe to retrieve solution twice:
-    sol′ = collect_solutions!(pl)
+    sol′ = run_pipeline!(pl, prob, alg, maxiters=10)
     @test sol === sol′
 end
 
