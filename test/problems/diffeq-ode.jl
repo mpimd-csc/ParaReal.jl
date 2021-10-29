@@ -34,9 +34,9 @@ sol = solve(ParaReal.problem(prob), alg, workers=ids, maxiters=n)
 
 # Compute reference solution elsewhere to "skip" compilation:
 ref = @fetchfrom w solve(prob, Euler(), dt=1/10n)
+val = sol.sols[end][end]
 
-@test sol isa DiffEqBase.AbstractODESolution
+@test sol isa ParaReal.GlobalSolution
 @test sol.retcode == :Success
-@test sol[end] ≈ ref[end] rtol=1e-5
-@test sol[end] ≈ [ℯ] rtol=0.01
-
+@test val ≈ ref[end] rtol=1e-5
+@test val ≈ [ℯ] rtol=0.01

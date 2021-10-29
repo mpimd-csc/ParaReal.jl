@@ -33,16 +33,5 @@ function solve(
     run_pipeline!(pipeline, prob, alg; kwargs...)
 
     @debug "Collecting local solutions"
-    sol = collect_solutions!(pipeline)
-
-    @debug "Reassembling global solution"
-    return assemble_solution(prob, alg, sol)
+    return collect_solutions!(pipeline)
 end
-
-"""
-    assemble_solution(prob, alg, sol) -> sol
-
-Try to assemble a global solution of the same type as the local solutions.
-Defaults to just returning the "internal" `sol::GlobalSolution`.
-"""
-assemble_solution(prob, alg, sol) = sol

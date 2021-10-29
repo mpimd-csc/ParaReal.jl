@@ -19,14 +19,6 @@ verbose && @info "Defining new problem and solution types"
     ParaReal.remake_prob!(::SomeProblem, _alg, u0, tspan) = SomeProblem(u0, tspan)
 end
 
-# Optional Interface
-function ParaReal.assemble_solution(prob::SomeProblem, alg, gsol)
-    sols = gsol.sols
-    init = empty(sols[1].Xs)
-    Xs = mapreduce(sol -> sol.Xs, append!, sols, init=init)
-    return SomeSolution(Xs)
-end
-
 verbose && @info "Creating problem instance"
 X0 = [0]
 tspan = (0., 1.)
@@ -38,5 +30,11 @@ alg = ParaReal.algorithm(somesolver, somesolver)
 ids = fill(first(workers()), 4)
 sol = ParaReal.solve(prob, alg, workers=ids)
 
-@test sol isa SomeSolution
-@test sol.Xs == [[1], [2], [3], [4]]
+@test sol isa ParaReal.GlobalSolution
+@test sol.retcode == :Success
+
+sols = sol.sols
+init = empty(sols[1].Xs)
+Xs = mapreduce(sol -> sol.Xs, append!, sols, init=init)
+
+@test Xs == [[1], [2], [3], [4]]
