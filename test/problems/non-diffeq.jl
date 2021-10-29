@@ -33,7 +33,9 @@ sol = ParaReal.solve(prob, alg, workers=ids)
 @test sol isa ParaReal.GlobalSolution
 @test sol.retcode == :Success
 
-sols = sol.sols
+sols = map(sol.sols) do rsol
+    fetch(rsol).sol
+end
 init = empty(sols[1].Xs)
 Xs = mapreduce(sol -> sol.Xs, append!, sols, init=init)
 

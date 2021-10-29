@@ -31,7 +31,7 @@ sol = solve(ParaReal.problem(prob), alg, workers=ids, maxiters=5)
 
 # Compute reference solution elsewhere to "skip" compilation:
 ref = @fetchfrom w fsolve_ode2(prob)
-val = sol.sols[end][end]
+val = fetch(sol.sols[end]).sol[end]
 
 @test sol isa ParaReal.GlobalSolution
 @test val ≈ ref[end] rtol=0.01

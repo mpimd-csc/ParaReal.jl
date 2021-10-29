@@ -11,8 +11,8 @@ function init_pipeline(workers::Vector{Int})
         RemoteChannel(() -> Channel{Message}(1), w)
     end
     N = length(workers)
-    results = RemoteChannel(() -> Channel(N))
     configs = Vector{StageConfig}(undef, N)
+    sols = [Future() for _ in workers]
 
     status = [:Initialized for _ in workers]
     events = RemoteChannel(() -> Channel(2N))
@@ -21,29 +21,31 @@ function init_pipeline(workers::Vector{Int})
     for n in 1:N-1
         prev = conns[n]
         next = conns[n+1]
+        sol = sols[n]
         configs[n] = StageConfig(n=n,
                                  N=N,
                                  prev=prev,
                                  next=next,
-                                 results=results,
+                                 sol=sol,
                                  events=events)
     end
 
     # Initialize final stage:
     prev = next = conns[N]
+    sol = sols[end]
     # Pass a `::ValueChannel` instead of `nothing` as to not trigger another
     # compilation. The value of `next` will never be accessed anyway.
     configs[N] = StageConfig(n=N,
                              N=N,
                              prev=prev,
                              next=next,
-                             results=results,
+                             sol=sol,
                              events=events)
 
     Pipeline(conns=conns,
-             results=results,
              workers=workers,
              configs=configs,
+             sols=sols,
              events=events,
              status=status)
 end
@@ -82,21 +84,7 @@ See [`Pipeline`](@ref) for the official interface.
 function collect_solutions!(pipeline::Pipeline)
     pipeline.sol === nothing || return pipeline.sol
 
-    # Check for errors:
-    wait_for_pipeline(pipeline)
-
-    @unpack results, workers, eventlog = pipeline
-    N = length(workers)
-
-    # Collect local solutions. Sorting them shouldn't be necessary,
-    # but as there is networking involved, we're rather safe than sorry:
-    n, sol = take!(results)
-    sols = Vector{typeof(sol)}(undef, N)
-    sols[n] = sol
-    for _ in 1:N-1
-        n, sol = take!(results)
-        sols[n] = sol
-    end
+    @unpack sols, eventlog = pipeline
     pipeline.sol = GlobalSolution(sols, eventlog)
 end
 

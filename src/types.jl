@@ -31,7 +31,7 @@ Base.@kwdef struct StageConfig
     N::Int # total number of steps in the pipeline
     prev::MessageChannel # where to get new `u0`-values from
     next::MessageChannel # where to put `u0`-values for the next pipeline step
-    results::RemoteChannel # where to put the solution objects after convergence
+    sol::Future # where to put the solution objects after convergence
     events::RemoteChannel # where to send status updates
 end
 
@@ -46,6 +46,8 @@ end
 Local solution over a single time slice
 """
 struct LocalSolution{S}
+    n::Int # step in the pipeline
+    k::Int # number of Newton iterations
     sol::S
     retcode::Symbol
 end
@@ -53,17 +55,19 @@ end
 """
 Global solution over the whole time span
 """
-struct GlobalSolution{S}
-    sols::Vector{S}
+struct GlobalSolution
+    sols::Vector{Future}
     retcodes::Vector{Symbol}
     retcode::Symbol
     eventlog::Vector{Event}
 
-    function GlobalSolution(lsols::Vector{LocalSolution{S}}, eventlog) where {S}
-        sols = [s.sol for s in lsols]
-        retcodes = [s.retcode for s in lsols]
+    function GlobalSolution(sols, eventlog)
+        fetch_from_owner(f, rr) = remotecall_fetch(f∘fetch, rr.where, rr)
+        retcodes = map(sols) do rsol
+            fetch_from_owner(sol -> sol.retcode, rsol)
+        end
         retcode = all(==(:Success), retcodes) ? :Success : :MaxIters
-        new{S}(sols, retcodes, retcode, eventlog)
+        new(sols, retcodes, retcode, eventlog)
     end
 end
 
@@ -77,12 +81,12 @@ end
 """
 Base.@kwdef mutable struct Pipeline
     conns::Vector{MessageChannel}
-    results::RemoteChannel
     sol::Union{GlobalSolution, Nothing} = nothing
 
     # Worker stages:
     workers::Vector{Int}
     configs::Vector{StageConfig}
+    sols::Vector{Future}
     tasks::Union{Vector{Future}, Nothing} = nothing
 
     # Status updates:

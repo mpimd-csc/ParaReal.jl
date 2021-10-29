@@ -10,7 +10,7 @@ using Base.Threads: nthreads, @threads
 using Distributed: Future,
                    RemoteChannel,
                    procs,
-                   remotecall,
+                   remotecall_fetch,
                    workers,
                    @fetchfrom,
                    @spawnat
