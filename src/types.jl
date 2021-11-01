@@ -87,7 +87,7 @@ Base.@kwdef mutable struct Pipeline
     workers::Vector{Int}
     configs::Vector{StageConfig}
     sols::Vector{Future}
-    tasks::Union{Vector{Future}, Nothing} = nothing
+    tasks::Union{Vector{Task}, Nothing} = nothing
 
     # Status updates:
     status::Vector{Symbol}

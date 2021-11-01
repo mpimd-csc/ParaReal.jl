@@ -21,7 +21,7 @@ is_pipeline_started(pl::Pipeline) = pl.tasks !== nothing
 Determine whether all the stages of a pipeline have exited.
 Does not block and not throw an error, if the pipeline failed.
 """
-is_pipeline_done(pl::Pipeline) = is_pipeline_started(pl) && all(isready, pl.tasks)
+is_pipeline_done(pl::Pipeline) = is_pipeline_started(pl) && all(istaskdone, pl.tasks)
 
 """
     is_pipeline_cancelled(pl::Pipeline) -> Bool
@@ -39,11 +39,5 @@ Does not block and not throw an error, if the pipeline failed.
 """
 function is_pipeline_failed(pl::Pipeline)
     is_pipeline_started(pl) || return false
-    @unpack tasks = pl
-    for t in tasks
-        isready(t) || continue
-        e = fetch(t)
-        e isa Exception && return true
-    end
-    return false
+    any(istaskfailed, pl.tasks)
 end

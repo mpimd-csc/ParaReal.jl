@@ -46,7 +46,7 @@ function test_connections(ids)
     @test pl.status == [:Done for _ in ids]
 
     # All spawned tasks should have finished by now.
-    @test all(isready, pl.tasks)
+    @test all(istaskdone, pl.tasks)
     @test istaskdone(pl.eventhandler)
 
     # It is safe to retrieve solution twice:
@@ -119,7 +119,7 @@ expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
     @test s1 == s2 == [:Started, :Waiting, :Cancelled]
 
     # All spawned tasks should have finished by now.
-    @test all(isready, pl.tasks)
+    @test all(istaskdone, pl.tasks)
     @test istaskdone(pl.eventhandler)
 end
 
@@ -142,7 +142,7 @@ end
     @test pl.status == [:Cancelled, :Cancelled]
 
     # All spawned tasks should have finished by now.
-    @test all(isready, pl.tasks)
+    @test all(istaskdone, pl.tasks)
     @test istaskdone(pl.eventhandler)
 end
 

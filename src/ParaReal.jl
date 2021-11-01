@@ -11,6 +11,7 @@ using Distributed: Future,
                    RemoteChannel,
                    procs,
                    remotecall_fetch,
+                   remotecall_wait,
                    workers,
                    @fetchfrom,
                    @spawnat

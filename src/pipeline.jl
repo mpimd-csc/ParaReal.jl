@@ -61,37 +61,27 @@ See [`Pipeline`](@ref) for the official interface.
 """
 function run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
     pipeline.sol === nothing || return pipeline.sol
-    try
-        start_pipeline!(pipeline, prob, alg; kwargs...)
-        send_initial_value(pipeline, prob)
-        wait_for_pipeline(pipeline)
-    catch e
-        if e isa InterruptException
-            @warn "Cancelling pipeline due to interrupt"
-            cancel_pipeline!(pipeline)
+    is_pipeline_started(pipeline) && error("Pipeline already started")
+    pipeline.eventhandler = @async _eventhandler(pipeline)
+    @sync try
+        # Start pipeline executors and event handler:
+        @unpack workers, configs = pipeline
+        pipeline.tasks = map(workers, configs) do w, c
+            @async remotecall_wait(execute_stage, w, prob, alg, c; kwargs...)
         end
+        # Send initial value:
+        @unpack conns = pipeline
+        c = first(conns)
+        val = initialvalue(prob)
+        put!(c, FinalValue(val))
+    catch e
+        @warn "Cancelling pipeline due to $(typeof(e))"
+        @async cancel_pipeline!(pipeline)
         rethrow()
     end
+    wait(pipeline.eventhandler)
     @unpack sols, eventlog = pipeline
     pipeline.sol = GlobalSolution(sols, eventlog)
-end
-
-"""
-    start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
-
-Create and schedule the tasks executing the pipeline stages.
-
-Not part of the official [`Pipeline`](@ref) interface.
-"""
-function start_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
-    is_pipeline_started(pipeline) && error("Pipeline already started")
-    @unpack workers, configs = pipeline
-    tasks = map(workers, configs) do w, c
-        D.@spawnat w execute_stage(prob, alg, c; kwargs...)
-    end
-    pipeline.tasks = tasks
-    pipeline.eventhandler = @async _eventhandler(pipeline)
-    nothing
 end
 
 function _eventhandler(pipeline::Pipeline)
@@ -129,21 +119,6 @@ function _send_status_update(config::StageConfig, status::Symbol)
 end
 
 """
-    send_initial_value(pipeline::Pipeline, prob)
-
-Kick off the ParaReal solver by sending the initial value of `prob`.
-Do not wait until all computations are done.
-
-Not part of the official [`Pipeline`](@ref) interface.
-"""
-function send_initial_value(pipeline::Pipeline, prob)
-    u0 = initialvalue(prob)
-    c = first(pipeline.conns)
-    put!(c, FinalValue(u0))
-    nothing
-end
-
-"""
     cancel_pipeline!(pl::Pipeline)
 
 Abandon all computations along the pipeline.
@@ -157,30 +132,4 @@ function cancel_pipeline!(pl::Pipeline)
     for c in pl.conns
         put!(c, Cancellation())
     end
-end
-
-"""
-    wait_for_pipeline(pl::Pipeline)
-
-Wait for all the pipeline stages to finish.
-Throws an error if the pipeline failed.
-
-Not part of the official [`Pipeline`](@ref) interface.
-"""
-function wait_for_pipeline(pl::Pipeline)
-    errs = []
-    # Wait for stage executors:
-    for t in pl.tasks
-        e = fetch(t)
-        e isa Exception || continue
-        push!(errs, e)
-    end
-    # Wait for event handler:
-    try
-        wait(pl.eventhandler)
-    catch e
-        push!(errs, e)
-    end
-    isempty(errs) || throw(CompositeException(errs))
-    nothing
 end
