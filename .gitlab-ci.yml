@@ -15,6 +15,7 @@ cache:
     - .julia/compiled
 
 test:
+  interruptible: true
   image: julia:${JULIA_VERSION}
   script:
     - julia -e 'using InteractiveUtils; versioninfo()'
@@ -37,6 +38,7 @@ test:
 
 # Test that the benchmark script isn't broken.
 benchmark:
+  interruptible: true
   image: julia:1.6
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
