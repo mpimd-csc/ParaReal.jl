@@ -1,13 +1,13 @@
 """
     init(::ParaReal.Problem,
          ::ParaReal.Algorithm;
-         workers::Vector{Int},
          kwargs...)
 
 Initialize a pipeline to eventually run on the worker ids specified by
 `workers`. Do not start the tasks executing the pipeline stages.
 Supported keyword arguments:
 
+* `workers = workers()`: worker ids to run the pipeline on
 * `maxiters = 10`: maximum number of Newton refinements
 * `tol = 1e-5`: relative error bound to judge about preliminary convergence
 * `nconverged = 2`: lower bound on successive converged refinements
@@ -18,7 +18,7 @@ at most `tol`, the corresponding time slice is considered convergent.
 Returns a [`Pipeline`](@ref).
 """
 function init(prob::Problem, alg::Algorithm;
-              workers::Vector{Int},
+              workers::Vector{Int}=D.workers(),
               kwargs...)
 
     issubset(workers, D.procs()) ||
