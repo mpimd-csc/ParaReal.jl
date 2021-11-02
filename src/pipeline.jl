@@ -31,7 +31,7 @@ function init(prob::Problem, alg::Algorithm;
     end
     N = length(workers)
     configs = Vector{StageConfig}(undef, N)
-    sols = [Future() for _ in workers]
+    sols = map(Future, workers)
 
     status = [:Initialized for _ in workers]
     events = RemoteChannel(() -> Channel(2N))

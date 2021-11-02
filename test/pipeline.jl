@@ -30,7 +30,7 @@ alg = ParaReal.algorithm(csolve_pl, fsolve_pl)
 # Before attempting to run jobs on remote machines, perform a local smoke test
 # to catch stupid mistakes early.
 
-function test_connections(ids, prob=prob, alg=alg; kwargs...)
+function test_connections(ids, prob=prob, alg=alg; nolocaldata=true, kwargs...)
     verbose && @info "Testing workers=$ids ..."
     verbose && @info "Initializing pipeline"
     global pl = init(prob, alg; workers=ids, maxiters=10, kwargs...)
@@ -52,10 +52,15 @@ function test_connections(ids, prob=prob, alg=alg; kwargs...)
     # It is safe to retrieve solution twice:
     sol′ = solve!(pl)
     @test sol === sol′
+
+    nolocaldata || return
+    # Unless the computations have been performed on this process,
+    # the references to the local solutions should not contain any data.
+    @test all(f -> f.v === nothing, sol.sols)
 end
 
 @testset "Smoke Test" begin
-    test_connections([1,1,1,1])
+    test_connections([1,1,1,1]; nolocaldata=false)
 end
 
 # Assuming the stages of a pipeline are executed on different threads on each
