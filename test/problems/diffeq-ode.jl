@@ -31,7 +31,7 @@ ids = fill(1, n)
 sol = solve(ParaReal.problem(prob), alg, workers=ids, maxiters=n)
 
 # Compute reference solution elsewhere to "skip" compilation:
-ref = @fetchfrom w solve(prob, Euler(), dt=1/10n)
+ref = solve(prob, Euler(), dt=1/10n)
 val = fetch(sol.sols[end]).sol[end]
 
 @test sol isa ParaReal.GlobalSolution

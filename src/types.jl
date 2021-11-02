@@ -75,11 +75,14 @@ end
 """
 # Pipeline Interface
 
-* [`init_pipeline`](@ref)
-* [`run_pipeline!`](@ref)
+* [`init`](@ref)
+* [`solve!`](@ref)
 * [`cancel_pipeline!`](@ref)
 """
 Base.@kwdef mutable struct Pipeline
+    prob
+    alg
+    kwargs
     conns::Vector{MessageChannel}
     sol::Union{GlobalSolution, Nothing} = nothing
 

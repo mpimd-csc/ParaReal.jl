@@ -12,7 +12,7 @@ verbose && @info "Creating problem instance"
 du = (u, _p, _t) -> u
 u0 = [1.]
 tspan = (0., 1.)
-prob = ODEProblem(du, u0, tspan)
+prob = ParaReal.problem(ODEProblem(du, u0, tspan))
 
 verbose && @info "Creating algorithm instance"
 @everywhere begin
@@ -30,16 +30,16 @@ alg = ParaReal.algorithm(csolve_pl, fsolve_pl)
 # Before attempting to run jobs on remote machines, perform a local smoke test
 # to catch stupid mistakes early.
 
-function test_connections(ids)
+function test_connections(ids, prob=prob, alg=alg; kwargs...)
     verbose && @info "Testing workers=$ids ..."
     verbose && @info "Initializing pipeline"
-    global pl = init_pipeline(ids)
+    global pl = init(prob, alg; workers=ids, maxiters=10, kwargs...)
     @test !is_pipeline_started(pl)
     @test !is_pipeline_done(pl)
     @test pl.status[1] == :Initialized
 
     verbose && @info "Starting worker tasks"
-    sol = run_pipeline!(pl, prob, alg, maxiters=10)
+    sol = solve!(pl)
     @test is_pipeline_started(pl)
     @test is_pipeline_done(pl)
     @test !is_pipeline_failed(pl)
@@ -50,7 +50,7 @@ function test_connections(ids)
     @test istaskdone(pl.eventhandler)
 
     # It is safe to retrieve solution twice:
-    sol′ = run_pipeline!(pl, prob, alg, maxiters=10)
+    sol′ = solve!(pl)
     @test sol === sol′
 end
 
@@ -85,8 +85,8 @@ function prepare(eventlog, stage)
 end
 
 @testset "Event Log" begin
-    global pl = init_pipeline([1, 1])
-    run_pipeline!(pl, prob, alg, maxiters=10)
+    global pl = init(prob, alg; workers=[1, 1], maxiters=10)
+    solve!(pl)
 
     log = pl.eventlog
     s1 = prepare(log, 1)
@@ -100,13 +100,13 @@ expensive(f) = x -> (sleep(delay); f(x))
 expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
 
 @testset "Cancellation before sending initial value" begin
-    global pl = init_pipeline(one2one)
+    global pl = init(prob, expensive_alg; workers=one2one, maxiters=10)
 
     @test !is_pipeline_cancelled(pl)
     @test all(!=(:Cancelled), pl.status)
 
     cancel_pipeline!(pl)
-    run_pipeline!(pl, prob, expensive_alg, maxiters=10)
+    solve!(pl)
 
     @test is_pipeline_cancelled(pl)
     @test is_pipeline_done(pl)
@@ -124,12 +124,12 @@ expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
 end
 
 @testset "Cancellation after sending initial value" begin
-    global pl = init_pipeline(one2one)
+    global pl = init(prob, expensive_alg; workers=one2one, maxiters=10)
 
     @test !is_pipeline_cancelled(pl)
     @test all(!=(:Cancelled), pl.status)
 
-    bg = @async run_pipeline!(pl, prob, expensive_alg, maxiters=10)
+    bg = @async solve!(pl)
     while !is_pipeline_started(pl)
         sleep(0.1)
     end
@@ -151,8 +151,8 @@ bangbang = ParaReal.algorithm(bang, bang) # Feuer frei!
 
 @testset "Explosions" begin
     verbose && @info "Testing explosions"
-    global pl = init_pipeline([1, 1])
-    @test_throws CompositeException run_pipeline!(pl, prob, bangbang, maxiters=10)
+    global pl = init(prob, bangbang; workers=[1, 1], maxiters=10)
+    @test_throws CompositeException solve!(pl)
     @test is_pipeline_done(pl)
     @test is_pipeline_failed(pl)
 

@@ -1,6 +1,7 @@
 module ParaReal
 
-import CommonSolve: solve
+import CommonSolve: solve, init, solve!
+export solve, init, solve!
 
 import Base.Threads,
        Distributed
@@ -22,10 +23,7 @@ using Requires
 const T = Base.Threads
 const D = Distributed
 
-export solve
-export init_pipeline,
-       run_pipeline!,
-       cancel_pipeline!
+export cancel_pipeline!
 export is_pipeline_started,
        is_pipeline_done,
        is_pipeline_cancelled,
@@ -41,7 +39,6 @@ include("pipeline.jl")
 include("status.jl")
 
 include("problem.jl")
-include("solve.jl")
 
 include("utils.jl")
 include("show.jl")

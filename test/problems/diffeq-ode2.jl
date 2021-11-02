@@ -28,7 +28,7 @@ ids = fill(1, 10)
 sol = solve(ParaReal.problem(prob), alg, workers=ids, maxiters=5)
 
 # Compute reference solution elsewhere to "skip" compilation:
-ref = @fetchfrom w fsolve_ode2(prob)
+ref = fsolve_ode2(prob)
 val = fetch(sol.sols[end]).sol[end]
 
 @test sol isa ParaReal.GlobalSolution

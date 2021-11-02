@@ -1,12 +1,31 @@
 """
-    init_pipeline(workers::Vector{Int})
+    init(::ParaReal.Problem,
+         ::ParaReal.Algorithm;
+         workers::Vector{Int},
+         kwargs...)
 
 Initialize a pipeline to eventually run on the worker ids specified by
 `workers`. Do not start the tasks executing the pipeline stages.
+Supported keyword arguments:
 
-See [`Pipeline`](@ref) for the official interface.
+* `maxiters = 10`: maximum number of Newton refinements
+* `tol = 1e-5`: relative error bound to judge about preliminary convergence
+* `nconverged = 2`: lower bound on successive converged refinements
+
+Only if `nconverged` successive refinements show a relative change of
+at most `tol`, the corresponding time slice is considered convergent.
+
+Returns a [`Pipeline`](@ref).
 """
-function init_pipeline(workers::Vector{Int})
+function init(prob::Problem, alg::Algorithm;
+              workers::Vector{Int},
+              kwargs...)
+
+    issubset(workers, D.procs()) ||
+        error("Unknown worker ids in `$workers`, no subset of `$(D.procs())`")
+    allunique(workers) ||
+        @warn "Multiple tasks per worker won't run in parallel. Use for debugging only."
+
     conns = map(workers) do w
         RemoteChannel(() -> Channel{Message}(1), w)
     end
@@ -42,7 +61,10 @@ function init_pipeline(workers::Vector{Int})
                              sol=sol,
                              events=events)
 
-    Pipeline(conns=conns,
+    Pipeline(prob=unwrap(prob),
+             alg=alg,
+             kwargs=kwargs,
+             conns=conns,
              workers=workers,
              configs=configs,
              sols=sols,
@@ -51,21 +73,20 @@ function init_pipeline(workers::Vector{Int})
 end
 
 """
-    run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
+    solve!(::ParaReal.Pipeline)
 
 Create and schedule the tasks executing the pipeline stages.
-Send the initial value of `prob` and wait for the completion of all stages.
+Send the problem's initial value and wait for the completion of all stages.
 Throws an error if the pipeline failed.
-
-See [`Pipeline`](@ref) for the official interface.
 """
-function run_pipeline!(pipeline::Pipeline, prob, alg; kwargs...)
+function solve!(pipeline::Pipeline)
     pipeline.sol === nothing || return pipeline.sol
     is_pipeline_started(pipeline) && error("Pipeline already started")
     pipeline.eventhandler = @async _eventhandler(pipeline)
     @sync try
         # Start pipeline executors and event handler:
         @unpack workers, configs = pipeline
+        @unpack prob, alg, kwargs = pipeline
         pipeline.tasks = map(workers, configs) do w, c
             @async remotecall_wait(execute_stage, w, prob, alg, c; kwargs...)
         end
