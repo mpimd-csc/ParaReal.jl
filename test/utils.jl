@@ -1,4 +1,4 @@
-using ParaReal: local_tspan, init_pipeline
+using ParaReal: local_tspan, init
 using Test
 
 @testset "local_tspan" begin
@@ -21,7 +21,9 @@ using Test
 end
 
 @testset "Pretty Printing" begin
-    pl = init_pipeline([1, 1, 1])
+    struct DummyP <: ParaReal.Problem end
+    struct DummyA <: ParaReal.Algorithm end
+    pl = init(DummyP(), DummyA(); workers=[1, 1, 1])
     str = repr("text/plain", pl)
     expected = """
     Pipeline with 3 stages:

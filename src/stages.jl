@@ -22,7 +22,7 @@ function _execute_stage(
     nconverged = 2,
 )
     _send_status_update(config, :Started)
-    @unpack n, N, prev, next, results = config
+    @unpack n, N, prev, next, sol = config
     finalstage = n == N
 
     K = maxiters
@@ -83,10 +83,9 @@ function _execute_stage(
         @debug "Converged successfully" n k
     end
 
+    @debug "Storing results" n
     retcode = converged ? :Success : :MaxIters
-    sol = LocalSolution(fsol, retcode)
-    @debug "Sending results" n
-    put!(results, (n, sol))
+    put!(sol, LocalSolution(n, k, fsol, retcode))
     @debug "Finished" n k
     _send_status_update(config, :Done)
     nothing

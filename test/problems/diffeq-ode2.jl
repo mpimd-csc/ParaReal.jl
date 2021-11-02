@@ -2,7 +2,6 @@ using Distributed, Test
 
 verbose = isinteractive()
 verbose && @info "Verifying setup"
-nprocs() == 1 && addprocs(1)
 
 using ParaReal, OrdinaryDiffEq
 @everywhere using ParaReal, OrdinaryDiffEq, LinearAlgebra
@@ -25,12 +24,12 @@ end
 alg = ParaReal.algorithm(csolve_ode2, fsolve_ode2)
 
 verbose && @info "Solving DiffEq ODEProblem"
-w = first(workers())
-ids = fill(w, 10)
+ids = fill(1, 10)
 sol = solve(ParaReal.problem(prob), alg, workers=ids, maxiters=5)
 
 # Compute reference solution elsewhere to "skip" compilation:
-ref = @fetchfrom w fsolve_ode2(prob)
+ref = fsolve_ode2(prob)
+val = fetch(sol.sols[end]).sol[end]
 
-@test sol isa DiffEqBase.AbstractODESolution
-@test sol[end] ≈ ref[end] rtol=0.01
+@test sol isa ParaReal.GlobalSolution
+@test val ≈ ref[end] rtol=0.01
