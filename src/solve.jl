@@ -19,8 +19,6 @@ function solve(
     )
     prob = unwrap(p)
 
-    D.myid() in workers &&
-        error("Cannot use the managing process as a worker process (FIXME)")
     issubset(workers, D.procs()) ||
         error("Unknown worker ids in `$workers`, no subset of `$(D.procs())`")
     allunique(workers) ||
