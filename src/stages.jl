@@ -41,6 +41,7 @@ function _execute_stage(
         prob = remake_prob!(prob, alg, u_prev, tspan)
 
         # Compute coarse solution
+        @debug "Computing coarse solution" n k
         u_coarse′ = u_coarse
         u_coarse  = nextvalue(csolve(prob, alg))
 
@@ -58,17 +59,21 @@ function _execute_stage(
         converged = _nconverged >= nconverged
 
         # Send correction of coarse solution on to the next stage
+        @debug "Sending value" n k
         cancelled = send_val(config, u, converged)
         cancelled && return
         converged && break
 
         # Compute fine solution
+        @debug "Computing fine solution" n k
         fsol = fsolve(prob, alg)
         u_fine = nextvalue(fsol)
 
         # If the previous stage converged, all subsequent values of this stage
         # will equal the most recent u_fine. So skip ahead and send that one.
         didconverge(msg) && break
+
+        @debug "Waiting for next value" n k
     end
 
     # Send final solution on to the next stage
