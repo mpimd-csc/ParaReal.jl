@@ -90,14 +90,55 @@ function prepare(eventlog, stage)
 end
 
 @testset "Event Log" begin
-    global pl = init(prob, alg; workers=[1, 1], maxiters=10)
+    global pl = init(prob, alg; workers=[1, 1], maxiters=10, warmupc=false, warmupf=false)
     solve!(pl)
 
     log = pl.eventlog
     s1 = prepare(log, 1)
     s2 = prepare(log, 2)
-    @test s1 == [:Started, :Waiting, :Running, :Done]
-    @test s2 == [:Started, :Waiting, :Running, :Waiting, :Running, :Done]
+    @test s1 == [:Started,
+                 :Waiting, :DoneWaiting,
+                 :ComputingC, :DoneComputingC,
+                 :ComputingU, :DoneComputingU,
+                 :ComputingF, :DoneComputingF,
+                 :Done]
+    @test s2 == [:Started,
+                 :Waiting, :DoneWaiting,
+                 :ComputingC, :DoneComputingC,
+                 :ComputingU, :DoneComputingU,
+                 :ComputingF, :DoneComputingF,
+                 :Waiting, :DoneWaiting,
+                 :ComputingC, :DoneComputingC,
+                 :ComputingU, :DoneComputingU,
+                 :ComputingF, :DoneComputingF,
+                 :Done]
+end
+
+@testset "Event Log (with warm up)" begin
+    pl = init(prob, alg; workers=[1, 1], maxiters=10, warmupc=true, warmupf=false)
+    solve!(pl)
+    log = pl.eventlog
+    s1 = prepare(log, 1)
+    @test s1[1:4] == [:Started,
+                      :WarmingUpC, :DoneWarmingUpC,
+                      :Waiting]
+
+    pl = init(prob, alg; workers=[1, 1], maxiters=10, warmupc=false, warmupf=true)
+    solve!(pl)
+    log = pl.eventlog
+    s1 = prepare(log, 1)
+    @test s1[1:4] == [:Started,
+                      :WarmingUpF, :DoneWarmingUpF,
+                      :Waiting]
+
+    pl = init(prob, alg; workers=[1, 1], maxiters=10, warmupc=true, warmupf=true)
+    solve!(pl)
+    log = pl.eventlog
+    s1 = prepare(log, 1)
+    @test s1[1:6] == [:Started,
+                      :WarmingUpC, :DoneWarmingUpC,
+                      :WarmingUpF, :DoneWarmingUpF,
+                      :Waiting]
 end
 
 delay = 5.0 # seconds
@@ -105,7 +146,7 @@ expensive(f) = x -> (sleep(delay); f(x))
 expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
 
 @testset "Cancellation before sending initial value" begin
-    global pl = init(prob, expensive_alg; workers=one2one, maxiters=10)
+    global pl = init(prob, expensive_alg; workers=one2one, maxiters=10, warmupc=false, warmupf=false)
 
     @test !is_pipeline_cancelled(pl)
     @test all(!=(:Cancelled), pl.status)
@@ -156,14 +197,15 @@ bangbang = ParaReal.algorithm(bang, bang) # Feuer frei!
 
 @testset "Explosions" begin
     verbose && @info "Testing explosions"
-    global pl = init(prob, bangbang; workers=[1, 1], maxiters=10)
+    global pl = init(prob, bangbang; workers=[1, 1], maxiters=10, warmupc=false, warmupf=false)
     @test_throws CompositeException solve!(pl)
     @test is_pipeline_done(pl)
     @test is_pipeline_failed(pl)
+    @test pl.status == [:Failed, :Cancelled]
+end
 
-    log = pl.eventlog
-    s1 = prepare(log, 1)
-    s2 = prepare(log, 2)
-    @test s1 == [:Started, :Waiting, :Running, :Failed]
-    @test s2 == [:Started, :Waiting, :Cancelled]
+@testset "Explosions (with warm-up)" begin
+    global pl = init(prob, bangbang; workers=[1, 1], maxiters=10)
+    @test_throws CompositeException solve!(pl)
+    @test pl.status == [:Failed, :Failed]
 end

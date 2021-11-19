@@ -20,8 +20,24 @@ function _execute_stage(
     maxiters = 10,
     tol = 1e-5,
     nconverged = 2,
+    warmupc = true,
+    warmupf = false,
 )
+
     _send_status_update(config, :Started)
+    if warmupc
+        @debug "Warming up csolve" n
+        _send_status_update(config, :WarmingUpC)
+        csolve(prob, alg)
+        _send_status_update(config, :DoneWarmingUpC)
+    end
+    if warmupf
+        @debug "Warming up fsolve" n
+        _send_status_update(config, :WarmingUpF)
+        fsolve(prob, alg)
+        _send_status_update(config, :DoneWarmingUpF)
+    end
+
     @unpack n, N, prev, next, sol = config
     finalstage = n == N
 
@@ -33,6 +49,7 @@ function _execute_stage(
     _nconverged = 0
     u′ = u = u_coarse = u_fine = nothing
     local k, msg, fsol, converged
+
     for outer k in 1:min(n, K)
         # Receive initial value and initialize local problem instance
         msg, cancelled = receive_val(config)
@@ -42,12 +59,17 @@ function _execute_stage(
 
         # Compute coarse solution
         @debug "Computing coarse solution" n k
+        _send_status_update(config, :ComputingC)
+        csol = csolve(prob, alg)
+        _send_status_update(config, :DoneComputingC)
         u_coarse′ = u_coarse
-        u_coarse  = nextvalue(csolve(prob, alg))
+        u_coarse  = nextvalue(csol)
 
         # Compute refined solution k
         u′ = backup!(u′, u)
+        _send_status_update(config, :ComputingU)
         u  = update_sol!(prob, alg, u, u_fine, u_coarse, u_coarse′)
+        _send_status_update(config, :DoneComputingU)
 
         # If the refined solution fulfills the convergence criterion,
         # perform a few iterations more to smooth out some more errors.
@@ -66,7 +88,9 @@ function _execute_stage(
 
         # Compute fine solution
         @debug "Computing fine solution" n k
+        _send_status_update(config, :ComputingF)
         fsol = fsolve(prob, alg)
+        _send_status_update(config, :DoneComputingF)
         u_fine = nextvalue(fsol)
 
         # If the previous stage converged, all subsequent values of this stage
@@ -125,7 +149,7 @@ function receive_val(config::StageConfig)
     msg = take!(prev)
     cancelled = check_cancellation(config, msg)
     cancelled && return msg, true
-    _send_status_update(config, :Running)
+    _send_status_update(config, :DoneWaiting)
     return msg, false
 end
 
