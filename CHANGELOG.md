@@ -1,3 +1,7 @@
+# dev
+
+- Fix deadlock due to fake convergence (!26)
+
 # v0.2.1
 
 - Add keyword arguments `warmupc`, `warmupf` to control JIT warm-up (!25)

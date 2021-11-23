@@ -26,8 +26,9 @@ function init(prob::Problem, alg::Algorithm;
     allunique(workers) ||
         @warn "Multiple tasks per worker won't run in parallel. Use for debugging only."
 
+    bufsize = get(kwargs, :maxiters, 10) # TODO: find a better solution
     conns = map(workers) do w
-        RemoteChannel(() -> Channel{Message}(1), w)
+        RemoteChannel(() -> Channel{Message}(bufsize), w)
     end
     N = length(workers)
     configs = Vector{StageConfig}(undef, N)
