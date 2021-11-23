@@ -1,3 +1,7 @@
+# v0.2.1
+
+- Add keyword arguments `warmupc`, `warmupf` to control JIT warm-up (!25)
+
 # v0.2
 
 - Don't send individual solutions back to the managing process (by default at least)
