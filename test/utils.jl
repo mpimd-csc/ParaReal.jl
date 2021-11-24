@@ -27,9 +27,9 @@ end
     str = repr("text/plain", pl)
     expected = """
     Pipeline with 3 stages:
-     stage 1 on worker 1: Initialized
-     stage 2 on worker 1: Initialized
-     stage 3 on worker 1: Initialized
+     stage 1 on worker 1: not yet started
+     stage 2 on worker 1: not yet started
+     stage 3 on worker 1: not yet started
     """
     @test str == expected
 end

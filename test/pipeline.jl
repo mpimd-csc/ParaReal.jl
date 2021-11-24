@@ -33,21 +33,21 @@ alg = ParaReal.algorithm(csolve_pl, fsolve_pl)
 function test_connections(ids, prob=prob, alg=alg; nolocaldata=true, kwargs...)
     verbose && @info "Testing workers=$ids ..."
     verbose && @info "Initializing pipeline"
-    global pl = init(prob, alg; workers=ids, maxiters=10, kwargs...)
+    global l = ParaReal.InMemoryLog(length(ids))
+    global pl = init(prob, alg; logger=l, workers=ids, maxiters=10, kwargs...)
     @test !is_pipeline_started(pl)
     @test !is_pipeline_done(pl)
-    @test pl.status[1] == :Initialized
+    @test l.status[1] == :Initialized
 
     verbose && @info "Starting worker tasks"
     sol = solve!(pl)
     @test is_pipeline_started(pl)
     @test is_pipeline_done(pl)
     @test !is_pipeline_failed(pl)
-    @test pl.status == [:Done for _ in ids]
+    @test l.status == [:Done for _ in ids]
 
     # All spawned tasks should have finished by now.
     @test all(istaskdone, pl.tasks)
-    @test istaskdone(pl.eventhandler)
 
     # It is safe to retrieve solution twice:
     sol′ = solve!(pl)
@@ -90,10 +90,11 @@ function prepare(eventlog, stage)
 end
 
 @testset "Event Log" begin
-    global pl = init(prob, alg; workers=[1, 1], maxiters=10, warmupc=false, warmupf=false)
-    solve!(pl)
+    l = ParaReal.InMemoryLog(2)
+    solve(prob, alg; logger=l, workers=[1, 1], warmupc=false, warmupf=false)
+    @test istaskdone(l.handler)
 
-    log = pl.eventlog
+    log = l.eventlog
     s1 = prepare(log, 1)
     s2 = prepare(log, 2)
     @test s1 == [:Started,
@@ -101,6 +102,7 @@ end
                  :ComputingC, :DoneComputingC,
                  :ComputingU, :DoneComputingU,
                  :ComputingF, :DoneComputingF,
+                 :StoringResults,
                  :Done]
     @test s2 == [:Started,
                  :Waiting, :DoneWaiting,
@@ -111,30 +113,31 @@ end
                  :ComputingC, :DoneComputingC,
                  :ComputingU, :DoneComputingU,
                  :ComputingF, :DoneComputingF,
+                 :StoringResults,
                  :Done]
 end
 
 @testset "Event Log (with warm up)" begin
-    pl = init(prob, alg; workers=[1, 1], maxiters=10, warmupc=true, warmupf=false)
-    solve!(pl)
-    log = pl.eventlog
-    s1 = prepare(log, 1)
+    l = ParaReal.InMemoryLog(2)
+    solve(prob, alg; logger=l, workers=[1, 1], warmupc=true, warmupf=false)
+
+    s1 = prepare(l.eventlog, 1)
     @test s1[1:4] == [:Started,
                       :WarmingUpC, :DoneWarmingUpC,
                       :Waiting]
 
-    pl = init(prob, alg; workers=[1, 1], maxiters=10, warmupc=false, warmupf=true)
-    solve!(pl)
-    log = pl.eventlog
-    s1 = prepare(log, 1)
+    l = ParaReal.InMemoryLog(2)
+    solve(prob, alg; logger=l, workers=[1, 1], warmupc=false, warmupf=true)
+
+    s1 = prepare(l.eventlog, 1)
     @test s1[1:4] == [:Started,
                       :WarmingUpF, :DoneWarmingUpF,
                       :Waiting]
 
-    pl = init(prob, alg; workers=[1, 1], maxiters=10, warmupc=true, warmupf=true)
-    solve!(pl)
-    log = pl.eventlog
-    s1 = prepare(log, 1)
+    l = ParaReal.InMemoryLog(2)
+    solve(prob, alg; logger=l, workers=[1, 1], warmupc=true, warmupf=true)
+
+    s1 = prepare(l.eventlog, 1)
     @test s1[1:6] == [:Started,
                       :WarmingUpC, :DoneWarmingUpC,
                       :WarmingUpF, :DoneWarmingUpF,
@@ -146,10 +149,11 @@ expensive(f) = x -> (sleep(delay); f(x))
 expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
 
 @testset "Cancellation before sending initial value" begin
-    global pl = init(prob, expensive_alg; workers=one2one, maxiters=10, warmupc=false, warmupf=false)
+    global l = ParaReal.InMemoryLog(length(one2one))
+    global pl = init(prob, expensive_alg; logger=l, workers=one2one, maxiters=10, warmupc=false, warmupf=false)
 
     @test !is_pipeline_cancelled(pl)
-    @test all(!=(:Cancelled), pl.status)
+    @test all(!=(:Cancelled), l.status)
 
     cancel_pipeline!(pl)
     solve!(pl)
@@ -157,23 +161,23 @@ expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
     @test is_pipeline_cancelled(pl)
     @test is_pipeline_done(pl)
     @test !is_pipeline_failed(pl)
-    @test pl.status == [:Cancelled, :Cancelled]
+    @test l.status == [:Cancelled, :Cancelled]
 
-    log = pl.eventlog
+    log = l.eventlog
     s1 = prepare(log, 1)
     s2 = prepare(log, 2)
     @test s1 == s2 == [:Started, :Waiting, :Cancelled]
 
     # All spawned tasks should have finished by now.
     @test all(istaskdone, pl.tasks)
-    @test istaskdone(pl.eventhandler)
 end
 
 @testset "Cancellation after sending initial value" begin
-    global pl = init(prob, expensive_alg; workers=one2one, maxiters=10)
+    global l = ParaReal.InMemoryLog(length(one2one))
+    global pl = init(prob, expensive_alg; logger=l, workers=one2one, maxiters=10)
 
     @test !is_pipeline_cancelled(pl)
-    @test all(!=(:Cancelled), pl.status)
+    @test all(!=(:Cancelled), l.status)
 
     bg = @async solve!(pl)
     while !is_pipeline_started(pl)
@@ -185,11 +189,10 @@ end
     @test is_pipeline_cancelled(pl)
     @test is_pipeline_done(pl)
     @test !is_pipeline_failed(pl)
-    @test pl.status == [:Cancelled, :Cancelled]
+    @test l.status == [:Cancelled, :Cancelled]
 
     # All spawned tasks should have finished by now.
     @test all(istaskdone, pl.tasks)
-    @test istaskdone(pl.eventhandler)
 end
 
 bang(_) = error("bang")
@@ -197,15 +200,17 @@ bangbang = ParaReal.algorithm(bang, bang) # Feuer frei!
 
 @testset "Explosions" begin
     verbose && @info "Testing explosions"
-    global pl = init(prob, bangbang; workers=[1, 1], maxiters=10, warmupc=false, warmupf=false)
+    global l = ParaReal.InMemoryLog(2)
+    global pl = init(prob, bangbang; logger=l, workers=[1, 1], maxiters=10, warmupc=false, warmupf=false)
     @test_throws CompositeException solve!(pl)
     @test is_pipeline_done(pl)
     @test is_pipeline_failed(pl)
-    @test pl.status == [:Failed, :Cancelled]
+    @test l.status == [:Failed, :Cancelled]
 end
 
 @testset "Explosions (with warm-up)" begin
-    global pl = init(prob, bangbang; workers=[1, 1], maxiters=10)
+    global l = ParaReal.InMemoryLog(2)
+    global pl = init(prob, bangbang; logger=l, workers=[1, 1], maxiters=10)
     @test_throws CompositeException solve!(pl)
-    @test pl.status == [:Failed, :Failed]
+    @test l.status == [:Failed, :Failed]
 end

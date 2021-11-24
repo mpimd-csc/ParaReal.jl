@@ -32,7 +32,7 @@ Base.@kwdef struct StageConfig
     prev::MessageChannel # where to get new `u0`-values from
     next::MessageChannel # where to put `u0`-values for the next pipeline step
     sol::Future # where to put the solution objects after convergence
-    events::RemoteChannel # where to send status updates
+    logger::AbstractLogger
 end
 
 struct Event
@@ -59,16 +59,15 @@ struct GlobalSolution
     sols::Vector{Future}
     retcodes::Vector{Symbol}
     retcode::Symbol
-    eventlog::Vector{Event}
 
-    function GlobalSolution(sols, eventlog)
+    function GlobalSolution(sols)
         fetch_from_owner(f, rr) = remotecall_fetch(f∘fetch, rr.where, rr)
         retcodes = map(sols) do rsol
             isready(rsol) || return :Unknown
             fetch_from_owner(sol -> sol.retcode, rsol)
         end
         retcode = all(==(:Success), retcodes) ? :Success : :MaxIters
-        new(sols, retcodes, retcode, eventlog)
+        new(sols, retcodes, retcode)
     end
 end
 
@@ -93,10 +92,6 @@ Base.@kwdef mutable struct Pipeline
     tasks::Union{Vector{Task}, Nothing} = nothing
 
     # Status updates:
-    status::Vector{Symbol}
-    events::RemoteChannel
-    eventlog::Vector{Event} = Event[]
-    eventhandler::Union{Task, Nothing} = nothing
     cancelled::Bool = false
 end
 
