@@ -1,5 +1,4 @@
 using Distributed, Test
-using LoggingExtras
 
 verbose = isinteractive()
 verbose && @info "Verifying setup"
@@ -84,84 +83,6 @@ n2one = repeat(ws, inner=2)
     test_connections(ids)
 end
 
-function prepare(eventlog, n)
-    l = filter(e -> e.n == n, eventlog)
-    map(e -> e.name, l)
-end
-
-@testset "Event Log" begin
-    l = ParaReal.InMemoryLog(2)
-    solve(prob, alg; logger=l, workers=[1, 1], warmupc=false, warmupf=false)
-    @test istaskdone(l.handler)
-
-    log = l.eventlog
-    s1 = prepare(log, 1)
-    s2 = prepare(log, 2)
-    @test s1 == [:Started,
-                 :Waiting, :DoneWaiting,
-                 :ComputingC, :DoneComputingC,
-                 :ComputingU, :DoneComputingU,
-                 :ComputingF, :DoneComputingF,
-                 :StoringResults,
-                 :Done]
-    @test s2 == [:Started,
-                 :Waiting, :DoneWaiting,
-                 :ComputingC, :DoneComputingC,
-                 :ComputingU, :DoneComputingU,
-                 :ComputingF, :DoneComputingF,
-                 :Waiting, :DoneWaiting,
-                 :ComputingC, :DoneComputingC,
-                 :ComputingU, :DoneComputingU,
-                 :ComputingF, :DoneComputingF,
-                 :StoringResults,
-                 :Done]
-end
-
-@testset "custom loggers" begin
-    l = ParaReal.InMemoryLog(2) do msg
-        return (; msg..., time_received=time())
-    end
-    logger = TransformerLogger(ParaReal.Logger(l.events)) do args
-        kwargs = (; args.kwargs..., time_sent=time())
-        return (; args..., kwargs=kwargs)
-    end
-
-    solve(prob, alg; logger=logger, workers=[1, 1], warmupc=false, warmupf=false)
-    @test istaskdone(l.handler)
-
-    log = l.eventlog
-    @test !isempty(log)
-    @test all(e -> haskey(e, :time_sent), log)
-    @test all(e -> haskey(e, :time_received), log)
-end
-
-@testset "Event Log (with warm up)" begin
-    l = ParaReal.InMemoryLog(2)
-    solve(prob, alg; logger=l, workers=[1, 1], warmupc=true, warmupf=false)
-
-    s1 = prepare(l.eventlog, 1)
-    @test s1[1:4] == [:Started,
-                      :WarmingUpC, :DoneWarmingUpC,
-                      :Waiting]
-
-    l = ParaReal.InMemoryLog(2)
-    solve(prob, alg; logger=l, workers=[1, 1], warmupc=false, warmupf=true)
-
-    s1 = prepare(l.eventlog, 1)
-    @test s1[1:4] == [:Started,
-                      :WarmingUpF, :DoneWarmingUpF,
-                      :Waiting]
-
-    l = ParaReal.InMemoryLog(2)
-    solve(prob, alg; logger=l, workers=[1, 1], warmupc=true, warmupf=true)
-
-    s1 = prepare(l.eventlog, 1)
-    @test s1[1:6] == [:Started,
-                      :WarmingUpC, :DoneWarmingUpC,
-                      :WarmingUpF, :DoneWarmingUpF,
-                      :Waiting]
-end
-
 delay = 5.0 # seconds
 expensive(f) = x -> (sleep(delay); f(x))
 expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
@@ -182,8 +103,8 @@ expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
     @test l.status == [:Cancelled, :Cancelled]
 
     log = l.eventlog
-    s1 = prepare(log, 1)
-    s2 = prepare(log, 2)
+    s1 = _prepare(log, 1)
+    s2 = _prepare(log, 2)
     @test s1 == s2 == [:Started, :Waiting, :Cancelled]
 
     # All spawned tasks should have finished by now.

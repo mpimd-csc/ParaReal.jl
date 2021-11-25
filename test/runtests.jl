@@ -7,9 +7,12 @@ const D = Distributed
 const T = Threads
 const PR = ParaReal
 
+_prepare(eventlog, n) = [e.name for e in eventlog if e.n == n]
+
 @time @testset "ParaReal.jl" begin
     include("utils.jl")
     @testset "Pipeline Interface" begin include("pipeline.jl") end
+    @testset "Logging" begin include("logging.jl") end
     @testset "Problem Types" begin
         @testset "diffeq ODE" begin
             include("problems/diffeq-ode.jl")
