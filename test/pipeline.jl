@@ -1,4 +1,5 @@
 using Distributed, Test
+using LoggingExtras
 
 verbose = isinteractive()
 verbose && @info "Verifying setup"
@@ -85,7 +86,6 @@ end
 
 function prepare(eventlog, n)
     l = filter(e -> e.n == n, eventlog)
-    sort!(l; by = e -> e.time_sent)
     map(e -> e.name, l)
 end
 
@@ -115,6 +115,24 @@ end
                  :ComputingF, :DoneComputingF,
                  :StoringResults,
                  :Done]
+end
+
+@testset "custom loggers" begin
+    l = ParaReal.InMemoryLog(2) do msg
+        return (; msg..., time_received=time())
+    end
+    logger = TransformerLogger(ParaReal.Logger(l.events)) do args
+        kwargs = (; args.kwargs..., time_sent=time())
+        return (; args..., kwargs=kwargs)
+    end
+
+    solve(prob, alg; logger=logger, workers=[1, 1], warmupc=false, warmupf=false)
+    @test istaskdone(l.handler)
+
+    log = l.eventlog
+    @test !isempty(log)
+    @test all(e -> haskey(e, :time_sent), log)
+    @test all(e -> haskey(e, :time_received), log)
 end
 
 @testset "Event Log (with warm up)" begin

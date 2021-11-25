@@ -17,8 +17,9 @@ Requires = "1"
 UnPack = "1"
 
 [extras]
+LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["OrdinaryDiffEq", "Test"]
+test = ["LoggingExtras", "OrdinaryDiffEq", "Test"]

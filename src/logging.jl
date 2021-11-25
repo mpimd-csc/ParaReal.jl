@@ -7,8 +7,7 @@ Logging.shouldlog(::Logger, lvl, mod, group, id) = group == :eventlog
 Logging.catch_exceptions(::Logger) = false
 
 function Logging.handle_message(l::Logger, lvl, msg, mod, group, id, file, line; kwargs...)
-    time_sent = time()
-    put!(l.events, (; kwargs..., time_sent, name=msg))
+    put!(l.events, (; kwargs..., name=msg))
 end
 
 struct InMemoryLog
@@ -17,11 +16,13 @@ struct InMemoryLog
     eventlog::Vector{NamedTuple}
     handler::Task
 
-    function InMemoryLog(N)
+    InMemoryLog(N::Int) = InMemoryLog(identity, N)
+
+    function InMemoryLog(f, N::Int)
         status = [:Initialized for _ in 1:N]
         events = RemoteChannel(() -> Channel(2N))
         eventlog = NamedTuple[]
-        handler = @async _eventhandler($status, $events, $eventlog)
+        handler = @async _eventhandler(f, $status, $events, $eventlog)
         new(status, events, eventlog, handler)
     end
 end
@@ -37,13 +38,12 @@ getlogger(l::InMemoryLog, _) = Logger(l.events)
 getlogger(l::AbstractLogger, _) = l
 getlogger(l::Vector{<:AbstractLogger}, n) = l[n]
 
-function _eventhandler(status, events, eventlog)
+function _eventhandler(f, status, events, eventlog)
     while true
         msg = take!(events)
-        @unpack n, name, time_sent = msg
+        @unpack n, name = msg
         # Process incoming event:
-        time_received = time()
-        e = (; msg..., time_received)
+        e = f(msg)
         push!(eventlog, e)
         status[n] = name
         # Stop if no further events are to be expected:
