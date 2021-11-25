@@ -35,13 +35,6 @@ Base.@kwdef struct StageConfig
     logger::AbstractLogger
 end
 
-struct Event
-    stage::Int
-    status::Symbol
-    time_sent::Float64
-    time_received::Float64
-end
-
 """
 Local solution over a single time slice
 """

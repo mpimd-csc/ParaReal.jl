@@ -83,10 +83,10 @@ n2one = repeat(ws, inner=2)
     test_connections(ids)
 end
 
-function prepare(eventlog, stage)
-    l = filter(e -> e.stage == stage, eventlog)
+function prepare(eventlog, n)
+    l = filter(e -> e.n == n, eventlog)
     sort!(l; by = e -> e.time_sent)
-    map(e -> e.status, l)
+    map(e -> e.name, l)
 end
 
 @testset "Event Log" begin
