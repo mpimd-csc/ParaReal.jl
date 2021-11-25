@@ -28,17 +28,17 @@ function _execute_stage(
 )
 
     @unpack n, N, prev, next, sol = config
-    @info :Started n _group=:eventlog
+    @info :Started n type=:singleton _group=:eventlog
 
     if warmupc
-        @info :WarmingUpC n _group=:eventlog
+        @info :WarmingUpC n type=:start _group=:eventlog
         csolve(prob, alg)
-        @info :DoneWarmingUpC n _group=:eventlog
+        @info :WarmingUpC n type=:stop _group=:eventlog
     end
     if warmupf
-        @info :WarmingUpF n _group=:eventlog
+        @info :WarmingUpF n type=:start _group=:eventlog
         fsolve(prob, alg)
-        @info :DoneWarmingUpF n _group=:eventlog
+        @info :WarmingUpF n type=:stop _group=:eventlog
     end
 
 
@@ -52,23 +52,23 @@ function _execute_stage(
 
     for outer k in 1:min(n, K)
         # Receive initial value and initialize local problem instance
-        msg, cancelled = receive_val(config)
+        msg, cancelled = receive_val(config, k)
         cancelled && return
         u_prev = nextvalue(msg)
         prob = remake_prob!(prob, alg, u_prev, tspan)
 
         # Compute coarse solution
-        @info :ComputingC n k _group=:eventlog
+        @info :ComputingC n k type=:start _group=:eventlog
         csol = csolve(prob, alg)
-        @info :DoneComputingC n k _group=:eventlog
+        @info :ComputingC n k type=:stop _group=:eventlog
         u_coarse′ = u_coarse
         u_coarse  = nextvalue(csol)
 
         # Compute refined solution k
         u′ = backup!(u′, u)
-        @info :ComputingU n k _group=:eventlog
+        @info :ComputingU n k type=:start _group=:eventlog
         u  = update_sol!(prob, alg, u, u_fine, u_coarse, u_coarse′)
-        @info :DoneComputingU n k _group=:eventlog
+        @info :ComputingU n k type=:stop _group=:eventlog
 
         # If the refined solution fulfills the convergence criterion,
         # perform a few iterations more to smooth out some more errors.
@@ -85,9 +85,9 @@ function _execute_stage(
         converged && break
 
         # Compute fine solution
-        @info :ComputingF n k _group=:eventlog
+        @info :ComputingF n k type=:start _group=:eventlog
         fsol = fsolve(prob, alg)
-        @info :DoneComputingF n k _group=:eventlog
+        @info :ComputingF n k type=:stop _group=:eventlog
         u_fine = nextvalue(fsol)
 
         # If the previous stage converged, all subsequent values of this stage
@@ -103,10 +103,10 @@ function _execute_stage(
         cancelled && return
     end
 
-    @info :StoringResults n _group=:eventlog
+    @info :StoringResults n type=:singleton _group=:eventlog
     retcode = converged ? :Success : :MaxIters
     put!(sol, LocalSolution(n, k, fsol, retcode))
-    @info :Done n k converged _group=:eventlog
+    @info :Done n k type=:singleton converged _group=:eventlog
     nothing
 end
 
@@ -129,17 +129,17 @@ fsolve(prob, alg::FunctionalAlgorithm) = alg.fine(prob)
 
 function check_cancellation(config::StageConfig, x)
     iscancelled(x) || return false
-    @info :Cancelled n=config.n _group=:eventlog
+    @info :Cancelled n=config.n k=0 type=:singleton _group=:eventlog
     return true
 end
 
-function receive_val(config::StageConfig)
-    @info :Waiting n=config.n _group=:eventlog
+function receive_val(config::StageConfig, k)
+    @info :Waiting n=config.n k type=:start _group=:eventlog
     @unpack prev = config
     msg = take!(prev)
     cancelled = check_cancellation(config, msg)
     cancelled && return msg, true
-    @info :DoneWaiting n=config.n _group=:eventlog
+    @info :Waiting n=config.n k type=:stop _group=:eventlog
     return msg, false
 end
 

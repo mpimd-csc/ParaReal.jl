@@ -25,21 +25,21 @@ alg = ParaReal.algorithm(stub, stub)
     @test length(s1) + length(s2) == length(log)
 
     @test s1 == [:Started,
-                 :Waiting, :DoneWaiting,
-                 :ComputingC, :DoneComputingC,
-                 :ComputingU, :DoneComputingU,
-                 :ComputingF, :DoneComputingF,
+                 :Waiting, :Waiting,
+                 :ComputingC, :ComputingC,
+                 :ComputingU, :ComputingU,
+                 :ComputingF, :ComputingF,
                  :StoringResults,
                  :Done]
     @test s2 == [:Started,
-                 :Waiting, :DoneWaiting,
-                 :ComputingC, :DoneComputingC,
-                 :ComputingU, :DoneComputingU,
-                 :ComputingF, :DoneComputingF,
-                 :Waiting, :DoneWaiting,
-                 :ComputingC, :DoneComputingC,
-                 :ComputingU, :DoneComputingU,
-                 :ComputingF, :DoneComputingF,
+                 :Waiting, :Waiting,
+                 :ComputingC, :ComputingC,
+                 :ComputingU, :ComputingU,
+                 :ComputingF, :ComputingF,
+                 :Waiting, :Waiting,
+                 :ComputingC, :ComputingC,
+                 :ComputingU, :ComputingU,
+                 :ComputingF, :ComputingF,
                  :StoringResults,
                  :Done]
 end
@@ -69,7 +69,7 @@ end
 
         s1 = _prepare(l.eventlog, 1)
         @test s1[1:4] == [:Started,
-                          :WarmingUpC, :DoneWarmingUpC,
+                          :WarmingUpC, :WarmingUpC,
                           :Waiting]
     end
     @testset "warmupf=true" begin
@@ -78,7 +78,7 @@ end
 
         s1 = _prepare(l.eventlog, 1)
         @test s1[1:4] == [:Started,
-                          :WarmingUpF, :DoneWarmingUpF,
+                          :WarmingUpF, :WarmingUpF,
                           :Waiting]
     end
     @testset "warmupc=true, warmupf=true" begin
@@ -87,8 +87,8 @@ end
 
         s1 = _prepare(l.eventlog, 1)
         @test s1[1:6] == [:Started,
-                          :WarmingUpC, :DoneWarmingUpC,
-                          :WarmingUpF, :DoneWarmingUpF,
+                          :WarmingUpC, :WarmingUpC,
+                          :WarmingUpF, :WarmingUpF,
                           :Waiting]
     end
 end
