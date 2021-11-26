@@ -2,11 +2,8 @@ didconverge(m::Message) = m.converged
 
 isdone(s::Symbol) = s in (:Done, :Cancelled, :Failed)
 
-iscancelled(s::Symbol) = s == :Cancelled
 iscancelled(c::RemoteChannel) = isready(c) && iscancelled(fetch(c))
 iscancelled(m::Message) = m.cancelled
-
-isfailed(s::Symbol) = s == :Failed
 
 """
     is_pipeline_started(pl::Pipeline) -> Bool
