@@ -11,6 +11,7 @@ _prepare(eventlog, n) = [e.name for e in eventlog if e.n == n]
 
 @time @testset "ParaReal.jl" begin
     include("utils.jl")
+    @testset "Explosions" begin include("explosions.jl") end
     @testset "Pipeline Interface" begin include("pipeline.jl") end
     @testset "Logging" begin include("logging.jl") end
     @testset "Problem Types" begin
