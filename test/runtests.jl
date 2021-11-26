@@ -9,6 +9,8 @@ const PR = ParaReal
 
 _prepare(eventlog, n) = [e.tag for e in eventlog if e.n == n]
 
+include("types.jl")
+
 @time @testset "ParaReal.jl" begin
     include("utils.jl")
     @testset "Explosions" begin include("explosions.jl") end

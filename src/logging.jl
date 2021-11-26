@@ -1,15 +1,44 @@
 # Loggers
 
-struct CommunicatingLogger <: Logging.AbstractLogger
+abstract type Logger <: AbstractLogger end
+
+Logging.min_enabled_level(::Logger) = Logging.BelowMinLevel
+Logging.shouldlog(::Logger, lvl, mod, group, id) = group == :eventlog
+Logging.catch_exceptions(::Logger) = false
+
+struct CommunicatingLogger <: Logger
     events::RemoteChannel
 end
 
-Logging.min_enabled_level(::CommunicatingLogger) = Logging.BelowMinLevel
-Logging.shouldlog(::CommunicatingLogger, lvl, mod, group, id) = group == :eventlog
-Logging.catch_exceptions(::CommunicatingLogger) = false
-
 function Logging.handle_message(l::CommunicatingLogger, lvl, msg, mod, group, id, file, line; kwargs...)
     put!(l.events, (; kwargs..., msg=msg))
+end
+
+# Open file on first log, without testing whether the file had already been opened.
+# Therefore, only one LazyFormatLogger for a particular file should exist.
+#
+# Before first use, this logger is safe to be sent to other workers in a
+# Distributed environment. Once the `logger` field is initialized, it contains
+# an `IOStream` which is not safe to be sent over the network.
+mutable struct LazyFormatLogger <: Logger
+    f::Function
+    filename::String
+    append::Bool
+    always_flush::Bool
+    logger::Union{Nothing,FormatLogger}
+end
+
+function LazyFormatLogger(f::Function, filename::String; append::Bool=false, always_flush::Bool=true)
+    LazyFormatLogger(f, filename, append, always_flush, nothing)
+end
+
+function Logging.handle_message(l::LazyFormatLogger, args...; kwargs...)
+    if l.logger === nothing
+        fname = l.filename
+        io = open(l.filename, l.append ? "a" : "w")
+        l.logger = FormatLogger(l.f, io; always_flush=l.always_flush)
+    end
+    Logging.handle_message(l.logger, args...; kwargs...)
 end
 
 # Observers
