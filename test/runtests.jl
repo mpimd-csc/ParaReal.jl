@@ -7,7 +7,7 @@ const D = Distributed
 const T = Threads
 const PR = ParaReal
 
-_prepare(eventlog, n) = [e.name for e in eventlog if e.n == n]
+_prepare(eventlog, n) = [e.tag for e in eventlog if e.n == n]
 
 @time @testset "ParaReal.jl" begin
     include("utils.jl")

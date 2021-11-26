@@ -7,7 +7,7 @@ Logging.shouldlog(::Logger, lvl, mod, group, id) = group == :eventlog
 Logging.catch_exceptions(::Logger) = false
 
 function Logging.handle_message(l::Logger, lvl, msg, mod, group, id, file, line; kwargs...)
-    put!(l.events, (; kwargs..., name=msg))
+    put!(l.events, (; kwargs..., msg=msg))
 end
 
 struct InMemoryLog
@@ -41,13 +41,13 @@ getlogger(l::Vector{<:AbstractLogger}, n) = l[n]
 function _eventhandler(f, status, events, eventlog)
     while true
         msg = take!(events)
-        @unpack n, name = msg
+        @unpack n, tag = msg
         # Process incoming event:
         e = f(msg)
         push!(eventlog, e)
-        status[n] = name
+        status[n] = tag
         # Stop if no further events are to be expected:
-        isdone(name) && all(isdone, status) && break
+        isdone(tag) && all(isdone, status) && break
     end
     # Signal that events won't be processed anymore.
     # Sending further events will cause an error.
