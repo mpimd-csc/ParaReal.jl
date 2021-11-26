@@ -1,24 +1,28 @@
-struct Logger <: Logging.AbstractLogger
+# Loggers
+
+struct CommunicatingLogger <: Logging.AbstractLogger
     events::RemoteChannel
 end
 
-Logging.min_enabled_level(::Logger) = Logging.BelowMinLevel
-Logging.shouldlog(::Logger, lvl, mod, group, id) = group == :eventlog
-Logging.catch_exceptions(::Logger) = false
+Logging.min_enabled_level(::CommunicatingLogger) = Logging.BelowMinLevel
+Logging.shouldlog(::CommunicatingLogger, lvl, mod, group, id) = group == :eventlog
+Logging.catch_exceptions(::CommunicatingLogger) = false
 
-function Logging.handle_message(l::Logger, lvl, msg, mod, group, id, file, line; kwargs...)
+function Logging.handle_message(l::CommunicatingLogger, lvl, msg, mod, group, id, file, line; kwargs...)
     put!(l.events, (; kwargs..., msg=msg))
 end
 
-struct InMemoryLog
+# Observers
+
+struct CommunicatingObserver
     status::Vector{Symbol}
     events::RemoteChannel
     eventlog::Vector{NamedTuple}
     handler::Task
 
-    InMemoryLog(N::Int) = InMemoryLog(identity, N)
+    CommunicatingObserver(N::Int) = CommunicatingObserver(identity, N)
 
-    function InMemoryLog(f, N::Int)
+    function CommunicatingObserver(f, N::Int)
         status = [:Initialized for _ in 1:N]
         events = RemoteChannel(() -> Channel(2N))
         eventlog = NamedTuple[]
@@ -34,7 +38,7 @@ Get the `AbstractLogger` to be used for parareal stage `n`.
 """
 function getlogger end
 
-getlogger(l::InMemoryLog, _) = Logger(l.events)
+getlogger(o::CommunicatingObserver, _) = CommunicatingLogger(o.events)
 getlogger(l::AbstractLogger, _) = l
 getlogger(l::Vector{<:AbstractLogger}, n) = l[n]
 

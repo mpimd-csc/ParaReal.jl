@@ -1,4 +1,5 @@
 using ParaReal, Test
+using ParaReal: CommunicatingLogger, CommunicatingObserver
 using LoggingExtras
 
 struct TestProblem <: ParaReal.Problem tspan end
@@ -13,11 +14,11 @@ stub = _ -> TestSolution()
 alg = ParaReal.algorithm(stub, stub)
 
 @testset "E.T. phone home" begin
-    l = ParaReal.InMemoryLog(2)
-    solve(prob, alg; logger=l, workers=[1, 1], warmupc=false, warmupf=false)
-    @test istaskdone(l.handler)
+    o = CommunicatingObserver(2)
+    solve(prob, alg; logger=o, workers=[1, 1], warmupc=false, warmupf=false)
+    @test istaskdone(o.handler)
 
-    log = l.eventlog
+    log = o.eventlog
     @test !isempty(log)
 
     s1 = _prepare(log, 1)
@@ -45,18 +46,18 @@ alg = ParaReal.algorithm(stub, stub)
 end
 
 @testset "Custom Loggers" begin
-    l = ParaReal.InMemoryLog(2) do msg
+    o = CommunicatingObserver(2) do msg
         return (; msg..., time_received=time())
     end
-    logger = TransformerLogger(ParaReal.Logger(l.events)) do args
+    l = TransformerLogger(CommunicatingLogger(o.events)) do args
         kwargs = (; args.kwargs..., time_sent=time())
         return (; args..., kwargs=kwargs)
     end
 
-    solve(prob, alg; logger=logger, workers=[1, 1], warmupc=false, warmupf=false)
-    @test istaskdone(l.handler)
+    solve(prob, alg; logger=l, workers=[1, 1], warmupc=false, warmupf=false)
+    @test istaskdone(o.handler)
 
-    log = l.eventlog
+    log = o.eventlog
     @test !isempty(log)
     @test all(e -> haskey(e, :time_sent), log)
     @test all(e -> haskey(e, :time_received), log)
@@ -64,28 +65,28 @@ end
 
 @testset "JIT Warm-Up" begin
     @testset "warmupc=true" begin
-        l = ParaReal.InMemoryLog(2)
-        solve(prob, alg; logger=l, workers=[1, 1], warmupc=true, warmupf=false)
+        o = CommunicatingObserver(2)
+        solve(prob, alg; logger=o, workers=[1, 1], warmupc=true, warmupf=false)
 
-        s1 = _prepare(l.eventlog, 1)
+        s1 = _prepare(o.eventlog, 1)
         @test s1[1:4] == [:Started,
                           :WarmingUpC, :WarmingUpC,
                           :Waiting]
     end
     @testset "warmupf=true" begin
-        l = ParaReal.InMemoryLog(2)
-        solve(prob, alg; logger=l, workers=[1, 1], warmupc=false, warmupf=true)
+        o = CommunicatingObserver(2)
+        solve(prob, alg; logger=o, workers=[1, 1], warmupc=false, warmupf=true)
 
-        s1 = _prepare(l.eventlog, 1)
+        s1 = _prepare(o.eventlog, 1)
         @test s1[1:4] == [:Started,
                           :WarmingUpF, :WarmingUpF,
                           :Waiting]
     end
     @testset "warmupc=true, warmupf=true" begin
-        l = ParaReal.InMemoryLog(2)
-        solve(prob, alg; logger=l, workers=[1, 1], warmupc=true, warmupf=true)
+        o = CommunicatingObserver(2)
+        solve(prob, alg; logger=o, workers=[1, 1], warmupc=true, warmupf=true)
 
-        s1 = _prepare(l.eventlog, 1)
+        s1 = _prepare(o.eventlog, 1)
         @test s1[1:6] == [:Started,
                           :WarmingUpC, :WarmingUpC,
                           :WarmingUpF, :WarmingUpF,

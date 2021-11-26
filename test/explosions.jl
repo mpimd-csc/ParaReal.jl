@@ -19,10 +19,10 @@ end
     stub = _ -> ExplodingSolution()
     alg = ParaReal.algorithm(stub, stub)
 
-    l = ParaReal.InMemoryLog(2)
-    s = @async solve(prob, alg; logger=l, workers=[1, 1], warmupc=false, warmupf=false)
+    o = ParaReal.CommunicatingObserver(2)
+    s = @async solve(prob, alg; logger=o, workers=[1, 1], warmupc=false, warmupf=false)
     try
-        wait(l.handler)
+        wait(o.handler)
     catch e
         @error "Event handler failed"
         # If running in CI, fail hard to avoid a deadlock/timeout:

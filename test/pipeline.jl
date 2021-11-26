@@ -6,6 +6,7 @@ nprocs() < 3 && addprocs(3-nprocs())
 ws = workers()[1:2]
 
 using ParaReal, OrdinaryDiffEq
+using ParaReal: CommunicatingObserver
 @everywhere using ParaReal, OrdinaryDiffEq
 
 verbose && @info "Creating problem instance"
@@ -33,7 +34,7 @@ alg = ParaReal.algorithm(csolve_pl, fsolve_pl)
 function test_connections(ids, prob=prob, alg=alg; nolocaldata=true, kwargs...)
     verbose && @info "Testing workers=$ids ..."
     verbose && @info "Initializing pipeline"
-    global l = ParaReal.InMemoryLog(length(ids))
+    global l = CommunicatingObserver(length(ids))
     global pl = init(prob, alg; logger=l, workers=ids, maxiters=10, kwargs...)
     @test !is_pipeline_started(pl)
     @test !is_pipeline_done(pl)
@@ -88,7 +89,7 @@ expensive(f) = x -> (sleep(delay); f(x))
 expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
 
 @testset "Cancellation before sending initial value" begin
-    global l = ParaReal.InMemoryLog(length(one2one))
+    global l = CommunicatingObserver(length(one2one))
     global pl = init(prob, expensive_alg; logger=l, workers=one2one, maxiters=10, warmupc=false, warmupf=false)
 
     @test !is_pipeline_cancelled(pl)
@@ -112,7 +113,7 @@ expensive_alg = ParaReal.algorithm(csolve_pl, expensive(fsolve_pl))
 end
 
 @testset "Cancellation after sending initial value" begin
-    global l = ParaReal.InMemoryLog(length(one2one))
+    global l = CommunicatingObserver(length(one2one))
     global pl = init(prob, expensive_alg; logger=l, workers=one2one, maxiters=10)
 
     @test !is_pipeline_cancelled(pl)
@@ -139,7 +140,7 @@ bangbang = ParaReal.algorithm(bang, bang) # Feuer frei!
 
 @testset "Explosions" begin
     verbose && @info "Testing explosions"
-    global l = ParaReal.InMemoryLog(2)
+    global l = CommunicatingObserver(2)
     global pl = init(prob, bangbang; logger=l, workers=[1, 1], maxiters=10, warmupc=false, warmupf=false)
     @test_throws CompositeException solve!(pl)
     @test is_pipeline_done(pl)
@@ -148,7 +149,7 @@ bangbang = ParaReal.algorithm(bang, bang) # Feuer frei!
 end
 
 @testset "Explosions (with warm-up)" begin
-    global l = ParaReal.InMemoryLog(2)
+    global l = CommunicatingObserver(2)
     global pl = init(prob, bangbang; logger=l, workers=[1, 1], maxiters=10)
     @test_throws CompositeException solve!(pl)
     @test l.status == [:Failed, :Failed]
