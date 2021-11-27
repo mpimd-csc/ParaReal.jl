@@ -4,11 +4,14 @@ function execute_stage(prob,
                 kwargs...
                )
 
-    try
-        _execute_stage(prob, alg, config; kwargs...)
-    catch
-        _send_status_update(config, :Failed)
-        rethrow()
+    @unpack logger = config
+    with_logger(logger) do
+        try
+            _execute_stage(prob, alg, config; kwargs...)
+        catch
+            @info "Stage failed" tag=:Failed n=config.n _group=:eventlog
+            rethrow()
+        end
     end
     nothing
 end
@@ -24,52 +27,48 @@ function _execute_stage(
     warmupf = false,
 )
 
-    _send_status_update(config, :Started)
+    @unpack n, N, prev, next, sol = config
+    @info "Stage started" tag=:Started n type=:singleton _group=:eventlog
+
     if warmupc
-        @debug "Warming up csolve" n
-        _send_status_update(config, :WarmingUpC)
+        @info "Warming up coarse solver" tag=:WarmingUpC n type=:start _group=:eventlog
         csolve(prob, alg)
-        _send_status_update(config, :DoneWarmingUpC)
+        @info "Coarse solver compiled and executed" tag=:WarmingUpC n type=:stop _group=:eventlog
     end
     if warmupf
-        @debug "Warming up fsolve" n
-        _send_status_update(config, :WarmingUpF)
+        @info "Warming up fine solver" tag=:WarmingUpF n type=:start _group=:eventlog
         fsolve(prob, alg)
-        _send_status_update(config, :DoneWarmingUpF)
+        @info "Fine solver compiled and executed" tag=:WarmingUpF n type=:stop _group=:eventlog
     end
 
-    @unpack n, N, prev, next, sol = config
-    finalstage = n == N
 
     K = maxiters
     @assert K >= 1
     tspan = local_tspan(n, N, prob.tspan)
 
-    @debug "Waiting for data" n pid=D.myid() tid=T.threadid()
     _nconverged = 0
     u′ = u = u_coarse = u_fine = nothing
     local k, msg, fsol, converged
 
     for outer k in 1:min(n, K)
         # Receive initial value and initialize local problem instance
-        msg, cancelled = receive_val(config)
+        msg, cancelled = receive_val(config, k)
         cancelled && return
         u_prev = nextvalue(msg)
         prob = remake_prob!(prob, alg, u_prev, tspan)
 
         # Compute coarse solution
-        @debug "Computing coarse solution" n k
-        _send_status_update(config, :ComputingC)
+        @info "Computing coarse solution" tag=:ComputingC n k type=:start _group=:eventlog
         csol = csolve(prob, alg)
-        _send_status_update(config, :DoneComputingC)
+        @info "Coarse solution ready" tag=:ComputingC n k type=:stop _group=:eventlog
         u_coarse′ = u_coarse
         u_coarse  = nextvalue(csol)
 
         # Compute refined solution k
         u′ = backup!(u′, u)
-        _send_status_update(config, :ComputingU)
+        @info "Computing parareal update" tag=:ComputingU n k type=:start _group=:eventlog
         u  = update_sol!(prob, alg, u, u_fine, u_coarse, u_coarse′)
-        _send_status_update(config, :DoneComputingU)
+        @info "Parareal update ready" tag=:ComputingU n k type=:stop _group=:eventlog
 
         # If the refined solution fulfills the convergence criterion,
         # perform a few iterations more to smooth out some more errors.
@@ -81,23 +80,19 @@ function _execute_stage(
         converged = _nconverged >= nconverged
 
         # Send correction of coarse solution on to the next stage
-        @debug "Sending value" n k
         cancelled = send_val(config, u, converged)
         cancelled && return
         converged && break
 
         # Compute fine solution
-        @debug "Computing fine solution" n k
-        _send_status_update(config, :ComputingF)
+        @info "Computing fine solution" tag=:ComputingF n k type=:start _group=:eventlog
         fsol = fsolve(prob, alg)
-        _send_status_update(config, :DoneComputingF)
+        @info "Fine solution ready" tag=:ComputingF n k type=:stop _group=:eventlog
         u_fine = nextvalue(fsol)
 
         # If the previous stage converged, all subsequent values of this stage
         # will equal the most recent u_fine. So skip ahead and send that one.
         didconverge(msg) && break
-
-        @debug "Waiting for next value" n k
     end
 
     # Send final solution on to the next stage
@@ -108,15 +103,10 @@ function _execute_stage(
         cancelled && return
     end
 
-    if converged
-        @debug "Converged successfully" n k
-    end
-
-    @debug "Storing results" n
+    @info "Storing local results" tag=:StoringResults n type=:singleton _group=:eventlog
     retcode = converged ? :Success : :MaxIters
     put!(sol, LocalSolution(n, k, fsol, retcode))
-    @debug "Finished" n k
-    _send_status_update(config, :Done)
+    @info "Stage finished" tag=:Done n k type=:singleton converged _group=:eventlog
     nothing
 end
 
@@ -139,17 +129,17 @@ fsolve(prob, alg::FunctionalAlgorithm) = alg.fine(prob)
 
 function check_cancellation(config::StageConfig, x)
     iscancelled(x) || return false
-    _send_status_update(config, :Cancelled)
+    @info "Cancellation requested" tag=:Cancelled n=config.n k=0 type=:singleton _group=:eventlog
     return true
 end
 
-function receive_val(config::StageConfig)
-    _send_status_update(config, :Waiting)
+function receive_val(config::StageConfig, k)
+    @info "Waiting for data" tag=:Waiting n=config.n k type=:start _group=:eventlog
     @unpack prev = config
     msg = take!(prev)
     cancelled = check_cancellation(config, msg)
     cancelled && return msg, true
-    _send_status_update(config, :DoneWaiting)
+    @info "New data received" tag=:Waiting n=config.n k type=:stop _group=:eventlog
     return msg, false
 end
 

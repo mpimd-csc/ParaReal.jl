@@ -11,6 +11,7 @@ Supported keyword arguments:
 * `maxiters = 10`: maximum number of Newton refinements
 * `tol = 1e-5`: relative error bound to judge about preliminary convergence
 * `nconverged = 2`: lower bound on successive converged refinements
+* `logger = NullLogger()`: where to log messages on the pipeline stages
 
 Only if `nconverged` successive refinements show a relative change of
 at most `tol`, the corresponding time slice is considered convergent.
@@ -19,6 +20,7 @@ Returns a [`Pipeline`](@ref).
 """
 function init(prob::Problem, alg::Algorithm;
               workers::Vector{Int}=D.workers(),
+              logger=NullLogger(),
               kwargs...)
 
     issubset(workers, D.procs()) ||
@@ -34,9 +36,6 @@ function init(prob::Problem, alg::Algorithm;
     configs = Vector{StageConfig}(undef, N)
     sols = map(Future, workers)
 
-    status = [:Initialized for _ in workers]
-    events = RemoteChannel(() -> Channel(2N))
-
     # Initialize first stages:
     for n in 1:N-1
         prev = conns[n]
@@ -47,7 +46,7 @@ function init(prob::Problem, alg::Algorithm;
                                  prev=prev,
                                  next=next,
                                  sol=sol,
-                                 events=events)
+                                 logger=getlogger(logger, n))
     end
 
     # Initialize final stage:
@@ -60,7 +59,7 @@ function init(prob::Problem, alg::Algorithm;
                              prev=prev,
                              next=next,
                              sol=sol,
-                             events=events)
+                             logger=getlogger(logger, N))
 
     Pipeline(prob=unwrap(prob),
              alg=alg,
@@ -68,9 +67,7 @@ function init(prob::Problem, alg::Algorithm;
              conns=conns,
              workers=workers,
              configs=configs,
-             sols=sols,
-             events=events,
-             status=status)
+             sols=sols)
 end
 
 """
@@ -83,61 +80,33 @@ Throws an error if the pipeline failed.
 function solve!(pipeline::Pipeline)
     pipeline.sol === nothing || return pipeline.sol
     is_pipeline_started(pipeline) && error("Pipeline already started")
-    pipeline.eventhandler = @async _eventhandler(pipeline)
-    @sync try
-        # Start pipeline executors and event handler:
-        @unpack workers, configs = pipeline
-        @unpack prob, alg, kwargs = pipeline
-        pipeline.tasks = map(workers, configs) do w, c
-            @async remotecall_wait(execute_stage, w, prob, alg, c; kwargs...)
-        end
-        # Send initial value:
-        @unpack conns = pipeline
-        c = first(conns)
-        val = initialvalue(prob)
-        put!(c, FinalValue(val))
-    catch e
-        @warn "Cancelling pipeline due to $(typeof(e))"
-        @async cancel_pipeline!(pipeline)
-        rethrow()
-    end
-    wait(pipeline.eventhandler)
-    @unpack sols, eventlog = pipeline
-    pipeline.sol = GlobalSolution(sols, eventlog)
-end
 
-function _eventhandler(pipeline::Pipeline)
-    @unpack status, events, eventlog = pipeline
-    while true
-        n, s, t = take!(events)
-        # Process incoming event:
-        time_received = time()
-        e = Event(n, s, t, time_received)
-        push!(eventlog, e)
-        status[n] = s
-        # If stage failed, cancel whole pipeline:
-        if isfailed(s)
+    # Start pipeline executors and event handler:
+    @unpack workers, configs = pipeline
+    @unpack prob, alg, kwargs = pipeline
+    pipeline.tasks = map(workers, configs) do w, c
+        @async remotecall_wait(execute_stage, w, prob, alg, c; kwargs...)
+    end
+
+    # Send initial value:
+    @unpack conns = pipeline
+    c = first(conns)
+    val = initialvalue(prob)
+    put!(c, FinalValue(val))
+
+    # Wait for completion; cancel on failure:
+    @sync for (n, t) in enumerate(pipeline.tasks)
+        @async try
+            wait(t)
+        catch e
             @warn "Cancelling pipeline due to failure on stage $n"
-            @async cancel_pipeline!(pipeline)
-            # FIXME: Above task might leak, though in most situations this is
-            # fine. This happens e.g. due to an undefined function, so it is a
-            # symptom of a bigger problem.
+            cancel_pipeline!(pipeline)
+            rethrow()
         end
-        # Stop if no further events are to be expected:
-        isdone(s) && all(isdone, status) && break
     end
-    # Signal that events won't be processed anymore.
-    # Sending further events will cause an error.
-    close(events)
-    nothing
-end
 
-function _send_status_update(config::StageConfig, status::Symbol)
-    t = time()
-    n = config.n
-    msg = (n, status, t)
-    put!(config.events, msg)
-    nothing
+    @unpack sols = pipeline
+    pipeline.sol = GlobalSolution(sols)
 end
 
 """

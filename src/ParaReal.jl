@@ -17,6 +17,8 @@ using Distributed: Future,
                    @fetchfrom,
                    @spawnat
 using LinearAlgebra: norm
+using Logging
+using LoggingExtras: FormatLogger, TransformerLogger
 using UnPack: @unpack
 using Requires
 
@@ -39,6 +41,8 @@ include("pipeline.jl")
 include("status.jl")
 
 include("problem.jl")
+
+include("logging.jl")
 
 include("utils.jl")
 include("show.jl")
