@@ -60,6 +60,18 @@ struct CommunicatingObserver
     end
 end
 
+struct TimingFileObserver
+    f::Function
+    t::Function
+    dir::String
+    logger::Dict{Int,AbstractLogger}
+
+    function TimingFileObserver(f::Function, t::Function, dir::String)
+        mkpath(dir)
+        new(f, t, dir, Dict{Int,AbstractLogger}())
+    end
+end
+
 """
     getlogger(l, n)
 
@@ -68,6 +80,14 @@ Get the `AbstractLogger` to be used for parareal stage `n`.
 function getlogger end
 
 getlogger(o::CommunicatingObserver, _) = CommunicatingLogger(o.events)
+getlogger(o::TimingFileObserver, n) = get!(o.logger, n) do
+    file = joinpath(o.dir, "$n.log")
+    TransformerLogger(LazyFormatLogger(o.f, file)) do args
+        kwargs = (; args.kwargs..., time=o.t())
+        return (; args..., kwargs=kwargs)
+    end
+end
+
 getlogger(l::AbstractLogger, _) = l
 getlogger(l::Vector{<:AbstractLogger}, n) = l[n]
 

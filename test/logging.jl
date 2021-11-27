@@ -1,7 +1,7 @@
 using Distributed
 using ParaReal, Test
-using ParaReal: CommunicatingLogger, CommunicatingObserver
-using ParaReal: LazyFormatLogger
+using ParaReal: CommunicatingLogger, LazyFormatLogger
+using ParaReal: CommunicatingObserver, TimingFileObserver
 using LoggingExtras
 using LoggingFormats: LogFmt
 
@@ -120,6 +120,23 @@ end
         finally
             rmprocs(ws)
         end
+    end
+end
+
+@testset "TimingFileObserver" begin
+    mktempdir() do tmp
+        dir = joinpath(tmp, "log")
+        @test !ispath(dir)
+        o = TimingFileObserver(LogFmt(), Base.time, dir)
+        @test ispath(dir)
+        solve(prob, alg; logger=o, workers=[1, 1], warmupc=false, warmupf=false)
+        @test readdir(dir) == ["1.log", "2.log"]
+        logfiles = readdir(dir, join=true)
+        @test countlines(logfiles[1]) == 11
+        @test countlines(logfiles[2]) == 19
+        hastime(line) = occursin(r"time=[\"]?[0-9]", line) # value might be "quoted"
+        @test all(hastime, readlines(logfiles[1]))
+        @test all(hastime, readlines(logfiles[2]))
     end
 end
 

@@ -18,7 +18,7 @@ using Distributed: Future,
                    @spawnat
 using LinearAlgebra: norm
 using Logging
-using LoggingExtras: FormatLogger
+using LoggingExtras: FormatLogger, TransformerLogger
 using UnPack: @unpack
 using Requires
 
