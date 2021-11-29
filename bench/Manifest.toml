@@ -312,6 +312,12 @@ version = "0.3.4"
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[LoggingExtras]]
+deps = ["Dates", "Logging"]
+git-tree-sha1 = "dfeda1c1130990428720de0024d4516b1902ce98"
+uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
+version = "0.4.7"
+
 [[LoopVectorization]]
 deps = ["ArrayInterface", "CPUSummary", "CloseOpenIntervals", "DocStringExtensions", "HostCPUFeatures", "IfElse", "LayoutPointers", "LinearAlgebra", "OffsetArrays", "PolyesterWeave", "Requires", "SIMDDualNumbers", "SLEEFPirates", "Static", "ThreadingUtilities", "UnPack", "VectorizationBase"]
 git-tree-sha1 = "148efdd0766119f6961c4e4a3d172975dc868a66"
@@ -414,10 +420,10 @@ uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
 version = "0.11.1"
 
 [[ParaReal]]
-deps = ["CommonSolve", "Distributed", "LinearAlgebra", "Requires", "UnPack"]
+deps = ["CommonSolve", "Distributed", "LinearAlgebra", "Logging", "LoggingExtras", "Requires", "UnPack"]
 path = ".."
 uuid = "d8ab9f86-dde6-11e9-3216-afd74457b932"
-version = "0.1.0"
+version = "0.2.1"
 
 [[Parameters]]
 deps = ["OrderedCollections", "UnPack"]
