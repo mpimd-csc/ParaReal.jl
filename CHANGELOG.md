@@ -1,7 +1,7 @@
-# dev
+# v0.3.0
 
 - Fix deadlock due to fake convergence (!26)
-- Use default logging frontend (`@info` and friends) for event creation (!27)
+- Use default logging frontend (`@info` and friends) for event creation (#27)
 
 # v0.2.1
 
