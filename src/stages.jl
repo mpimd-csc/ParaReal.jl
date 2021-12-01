@@ -5,13 +5,15 @@ function execute_stage(prob,
                )
 
     @unpack logger = config
-    with_logger(logger) do
-        try
+    try
+        with_logger(logger) do
             _execute_stage(prob, alg, config; kwargs...)
-        catch
-            @info "Stage failed" tag=:Failed n=config.n _group=:eventlog
-            rethrow()
         end
+    catch
+        with_logger(logger) do
+            @error "Stage failed" tag=:Failed n=config.n _group=:eventlog
+        end
+        rethrow()
     end
     nothing
 end
