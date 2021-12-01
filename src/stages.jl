@@ -4,7 +4,7 @@ function execute_stage(prob,
                 kwargs...
                )
 
-    @unpack logger = config
+    logger = something(config.logger, current_logger())
     try
         with_logger(logger) do
             _execute_stage(prob, alg, config; kwargs...)

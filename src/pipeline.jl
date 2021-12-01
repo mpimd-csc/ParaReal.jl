@@ -11,7 +11,10 @@ Supported keyword arguments:
 * `maxiters = 10`: maximum number of Newton refinements
 * `tol = 1e-5`: relative error bound to judge about preliminary convergence
 * `nconverged = 2`: lower bound on successive converged refinements
-* `logger = NullLogger()`: where to log messages on the pipeline stages
+* `logger = nothing`: where to log messages on the pipeline stages.
+  If `nothing`, use `current_logger()` on the respective workers.
+  Errors will be rethrown outside `with_logger(logger) do ... end`,
+  i.e. handled by the global logger.
 
 Only if `nconverged` successive refinements show a relative change of
 at most `tol`, the corresponding time slice is considered convergent.
@@ -20,7 +23,7 @@ Returns a [`Pipeline`](@ref).
 """
 function init(prob::Problem, alg::Algorithm;
               workers::Vector{Int}=D.workers(),
-              logger=NullLogger(),
+              logger=nothing,
               kwargs...)
 
     issubset(workers, D.procs()) ||

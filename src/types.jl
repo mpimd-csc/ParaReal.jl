@@ -32,7 +32,7 @@ Base.@kwdef struct StageConfig
     prev::MessageChannel # where to get new `u0`-values from
     next::MessageChannel # where to put `u0`-values for the next pipeline step
     sol::Future # where to put the solution objects after convergence
-    logger::AbstractLogger
+    logger::Union{Nothing,AbstractLogger}
 end
 
 """

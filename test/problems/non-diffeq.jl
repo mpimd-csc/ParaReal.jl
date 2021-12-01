@@ -28,7 +28,7 @@ verbose && @info "Solving SomeProblem"
 somesolver = prob -> SomeSolution([map(x->x+1, prob.X0)])
 alg = ParaReal.algorithm(somesolver, somesolver)
 ids = fill(first(workers()), 4)
-sol = ParaReal.solve(prob, alg, workers=ids)
+sol = ParaReal.solve(prob, alg, workers=ids, logger=NullLogger())
 
 @test sol isa ParaReal.GlobalSolution
 @test sol.retcode == :Success
