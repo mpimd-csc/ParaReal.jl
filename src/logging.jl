@@ -88,6 +88,7 @@ getlogger(o::TimingFileObserver, n) = get!(o.logger, n) do
     end
 end
 
+getlogger(::Nothing, _) = nothing
 getlogger(l::AbstractLogger, _) = l
 getlogger(l::Vector{<:AbstractLogger}, n) = l[n]
 

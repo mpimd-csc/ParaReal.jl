@@ -4,14 +4,16 @@ function execute_stage(prob,
                 kwargs...
                )
 
-    @unpack logger = config
-    with_logger(logger) do
-        try
+    logger = something(config.logger, current_logger())
+    try
+        with_logger(logger) do
             _execute_stage(prob, alg, config; kwargs...)
-        catch
-            @info "Stage failed" tag=:Failed n=config.n _group=:eventlog
-            rethrow()
         end
+    catch
+        with_logger(logger) do
+            @error "Stage failed" tag=:Failed n=config.n _group=:eventlog
+        end
+        rethrow()
     end
     nothing
 end
@@ -31,14 +33,14 @@ function _execute_stage(
     @info "Stage started" tag=:Started n type=:singleton _group=:eventlog
 
     if warmupc
-        @info "Warming up coarse solver" tag=:WarmingUpC n type=:start _group=:eventlog
+        @debug "Warming up coarse solver" tag=:WarmingUpC n type=:start _group=:eventlog
         csolve(prob, alg)
-        @info "Coarse solver compiled and executed" tag=:WarmingUpC n type=:stop _group=:eventlog
+        @debug "Coarse solver compiled and executed" tag=:WarmingUpC n type=:stop _group=:eventlog
     end
     if warmupf
-        @info "Warming up fine solver" tag=:WarmingUpF n type=:start _group=:eventlog
+        @debug "Warming up fine solver" tag=:WarmingUpF n type=:start _group=:eventlog
         fsolve(prob, alg)
-        @info "Fine solver compiled and executed" tag=:WarmingUpF n type=:stop _group=:eventlog
+        @debug "Fine solver compiled and executed" tag=:WarmingUpF n type=:stop _group=:eventlog
     end
 
 
@@ -58,17 +60,17 @@ function _execute_stage(
         prob = remake_prob!(prob, alg, u_prev, tspan)
 
         # Compute coarse solution
-        @info "Computing coarse solution" tag=:ComputingC n k type=:start _group=:eventlog
+        @debug "Computing coarse solution" tag=:ComputingC n k type=:start _group=:eventlog
         csol = csolve(prob, alg)
-        @info "Coarse solution ready" tag=:ComputingC n k type=:stop _group=:eventlog
+        @debug "Coarse solution ready" tag=:ComputingC n k type=:stop _group=:eventlog
         u_coarse′ = u_coarse
         u_coarse  = nextvalue(csol)
 
         # Compute refined solution k
         u′ = backup!(u′, u)
-        @info "Computing parareal update" tag=:ComputingU n k type=:start _group=:eventlog
+        @debug "Computing parareal update" tag=:ComputingU n k type=:start _group=:eventlog
         u  = update_sol!(prob, alg, u, u_fine, u_coarse, u_coarse′)
-        @info "Parareal update ready" tag=:ComputingU n k type=:stop _group=:eventlog
+        @debug "Parareal update ready" tag=:ComputingU n k type=:stop _group=:eventlog
 
         # If the refined solution fulfills the convergence criterion,
         # perform a few iterations more to smooth out some more errors.
@@ -85,9 +87,9 @@ function _execute_stage(
         converged && break
 
         # Compute fine solution
-        @info "Computing fine solution" tag=:ComputingF n k type=:start _group=:eventlog
+        @debug "Computing fine solution" tag=:ComputingF n k type=:start _group=:eventlog
         fsol = fsolve(prob, alg)
-        @info "Fine solution ready" tag=:ComputingF n k type=:stop _group=:eventlog
+        @debug "Fine solution ready" tag=:ComputingF n k type=:stop _group=:eventlog
         u_fine = nextvalue(fsol)
 
         # If the previous stage converged, all subsequent values of this stage
@@ -103,7 +105,7 @@ function _execute_stage(
         cancelled && return
     end
 
-    @info "Storing local results" tag=:StoringResults n type=:singleton _group=:eventlog
+    @debug "Storing local results" tag=:StoringResults n type=:singleton _group=:eventlog
     retcode = converged ? :Success : :MaxIters
     put!(sol, LocalSolution(n, k, fsol, retcode))
     @info "Stage finished" tag=:Done n k type=:singleton converged _group=:eventlog
@@ -129,17 +131,17 @@ fsolve(prob, alg::FunctionalAlgorithm) = alg.fine(prob)
 
 function check_cancellation(config::StageConfig, x)
     iscancelled(x) || return false
-    @info "Cancellation requested" tag=:Cancelled n=config.n k=0 type=:singleton _group=:eventlog
+    @warn "Cancellation requested" tag=:Cancelled n=config.n k=0 type=:singleton _group=:eventlog
     return true
 end
 
 function receive_val(config::StageConfig, k)
-    @info "Waiting for data" tag=:Waiting n=config.n k type=:start _group=:eventlog
+    @debug "Waiting for data" tag=:Waiting n=config.n k type=:start _group=:eventlog
     @unpack prev = config
     msg = take!(prev)
     cancelled = check_cancellation(config, msg)
     cancelled && return msg, true
-    @info "New data received" tag=:Waiting n=config.n k type=:stop _group=:eventlog
+    @debug "New data received" tag=:Waiting n=config.n k type=:stop _group=:eventlog
     return msg, false
 end
 
