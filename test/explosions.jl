@@ -1,11 +1,11 @@
 using ParaReal, Test
 
-struct ExplodingProblem <: ParaReal.Problem tspan end
+struct ExplodingProblem tspan end
 struct ExplodingSolution end
 
-ParaReal.remake_prob!(::ExplodingProblem, _, _, tspan) = ExplodingProblem(tspan)
-ParaReal.initialvalue(::ExplodingProblem) = [666.]
-ParaReal.nextvalue(::ExplodingSolution) = [666.]
+ParaReal.remake_prob(::ExplodingProblem, _, tspan) = ExplodingProblem(tspan)
+ParaReal.initial_value(::ExplodingProblem) = [666.]
+ParaReal.value(::ExplodingSolution) = Float64[]
 
 function ci_exit(e)
     get(ENV, "CI", "false") == "true" || return
@@ -15,12 +15,18 @@ function ci_exit(e)
 end
 
 @testset "developer error" begin
-    prob = ExplodingProblem((0., 666.))
+    prob = ParaReal.Problem(ExplodingProblem((0., 666.)))
     stub = _ -> ExplodingSolution()
-    alg = ParaReal.algorithm(stub, stub)
+    alg = ParaReal.Algorithm(stub, stub)
 
     o = ParaReal.CommunicatingObserver(2)
-    s = @async solve(prob, alg; logger=o, workers=[1, 1], warmupc=false, warmupf=false)
+    s = @async solve(
+        prob, alg;
+        logger=o,
+        schedule=ProcessesSchedule([1, 1]),
+        warmupc=false,
+        warmupf=false,
+    )
     try
         wait(o.handler)
     catch e

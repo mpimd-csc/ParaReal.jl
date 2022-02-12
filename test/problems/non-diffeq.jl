@@ -1,4 +1,4 @@
-using Distributed, Test
+using Distributed, Logging, Test
 
 verbose = isinteractive()
 verbose && @info "Verifying setup"
@@ -10,31 +10,37 @@ using ParaReal
 verbose && @info "Defining new problem and solution types"
 @everywhere begin
     # Define problem and solution types
-    struct SomeProblem{T} <: ParaReal.Problem X0::T; tspan; end
-    struct SomeSolution{T} Xs::Vector{T} end
+    struct SomeProblem{T}
+        X0::T
+        tspan
+    end
+    struct SomeSolution{T}
+        Xs::Vector{T}
+    end
 
     # Implement interface
-    ParaReal.initialvalue(prob::SomeProblem) = prob.X0
-    ParaReal.nextvalue(sol::SomeSolution) = last(sol.Xs)
-    ParaReal.remake_prob!(::SomeProblem, _alg, u0, tspan) = SomeProblem(u0, tspan)
+    ParaReal.initial_value(prob::SomeProblem) = prob.X0
+    ParaReal.value(sol::SomeSolution) = last(sol.Xs)
+    ParaReal.remake_prob(::SomeProblem, X0, tspan) = SomeProblem(X0, tspan)
 end
 
 verbose && @info "Creating problem instance"
 X0 = [0]
 tspan = (0., 1.)
-prob = SomeProblem(X0, tspan)
+prob = ParaReal.Problem(SomeProblem(X0, tspan))
 
 verbose && @info "Solving SomeProblem"
 somesolver = prob -> SomeSolution([map(x->x+1, prob.X0)])
-alg = ParaReal.algorithm(somesolver, somesolver)
+alg = ParaReal.Algorithm(somesolver, somesolver)
 ids = fill(first(workers()), 4)
-sol = ParaReal.solve(prob, alg, workers=ids, logger=NullLogger())
+schedule = ProcessesSchedule(ids)
+sol = ParaReal.solve(prob, alg; schedule, logger=NullLogger())
 
-@test sol isa ParaReal.GlobalSolution
+@test sol isa ParaReal.Solution
 @test sol.retcode == :Success
 
-_sols = map(sol.sols) do rsol
-    fetch(rsol).sol
+_sols = map(sol.stages) do s
+    fetch(s).Fᵏ⁻¹
 end
 _init = empty(_sols[1].Xs)
 Xs = mapreduce(sol -> sol.Xs, append!, _sols, init=_init)

@@ -21,15 +21,16 @@ using Test
 end
 
 @testset "Pretty Printing" begin
-    struct DummyP <: ParaReal.Problem end
-    struct DummyA <: ParaReal.Algorithm end
-    pl = init(DummyP(), DummyA(); workers=[1, 1, 1])
+    dummy_prob = ParaReal.Problem(TestProblem())
+    dummy_alg  = ParaReal.Algorithm(identity, identity)
+    s = ProcessesSchedule([1, 1, 1])
+    pl = init(dummy_prob, dummy_alg; schedule=s, rtol=0.0)
     str = repr("text/plain", pl)
     expected = """
-    Pipeline with 3 stages:
-     stage 1 on worker 1: not yet started
-     stage 2 on worker 1: not yet started
-     stage 3 on worker 1: not yet started
+    Pipeline{ProcessesSchedule} with 3 stages:
+     stage 1 located at 1: not yet started
+     stage 2 located at 1: not yet started
+     stage 3 located at 1: not yet started
     """
     @test str == expected
 end

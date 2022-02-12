@@ -1,4 +1,4 @@
-using Distributed, Test
+using Distributed, Logging, Test
 
 verbose = isinteractive()
 verbose && @info "Verifying setup"
@@ -23,18 +23,19 @@ verbose && @info "Creating algorithm instance"
         solve(prob, Euler(), dt=(tf-t0)/10)
     end
 end
-alg = ParaReal.algorithm(csolve_ode, fsolve_ode)
+alg = ParaReal.Algorithm(csolve_ode, fsolve_ode)
 
 verbose && @info "Solving DiffEq ODEProblem"
 n = 10
 ids = fill(1, n)
-sol = solve(ParaReal.problem(prob), alg, workers=ids, maxiters=n, logger=NullLogger())
+schedule = ProcessesSchedule(ids)
+sol = solve(ParaReal.Problem(prob), alg; schedule, maxiters=n, logger=NullLogger())
 
 # Compute reference solution elsewhere to "skip" compilation:
 ref = solve(prob, Euler(), dt=1/10n)
-val = fetch(sol.sols[end]).sol[end]
+val = ParaReal.value(fetch(sol.stages[end]).Fᵏ⁻¹)
 
-@test sol isa ParaReal.GlobalSolution
+@test sol isa ParaReal.Solution
 @test sol.retcode == :Success
 @test val ≈ ref[end] rtol=1e-5
 @test val ≈ [ℯ] rtol=0.01
