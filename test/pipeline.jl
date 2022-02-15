@@ -101,7 +101,7 @@ expensive_alg = ParaReal.Algorithm(csolve_pl, expensive(fsolve_pl))
     log = l.eventlog
     s1 = _prepare(log, 1)
     s2 = _prepare(log, 2)
-    @test s1 == s2 == [:Started, :Waiting, :Cancelled]
+    @test s1 == s2 == [:Started, :WaitingRecv, :Cancelled]
 end
 
 @testset "Cancellation after sending initial value" begin

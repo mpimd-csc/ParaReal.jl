@@ -11,24 +11,32 @@ alg = ParaReal.Algorithm(stub, stub)
 
 const TRACE1 = [
     :Started,
-    :Waiting, :Waiting,
+    :WaitingRecv, :WaitingRecv,
     :ComputingC, :ComputingC,
+    :WaitingSend, :WaitingSend,
+    :CheckConv, :CheckConv, # not a full convergence check; only computes norm
     :ComputingF, :ComputingF,
-    :Waiting, :Waiting,
-    #:StoringResults,
+    :WaitingRecv, :WaitingRecv, # receives convergence message
+    :WaitingSend, :WaitingSend, # sends fine solution
+    :WaitingSend, :WaitingSend, # sends convergence
     :Done,
 ]
 const TRACE2 = [
     :Started,
-    :Waiting, :Waiting,
+    :WaitingRecv, :WaitingRecv,
     :ComputingC, :ComputingC,
+    :WaitingSend, :WaitingSend,
+    :CheckConv, :CheckConv, # not a full convergence check; only computes norm
     :ComputingF, :ComputingF,
-    :Waiting, :Waiting,
+    :WaitingRecv, :WaitingRecv,
     :ComputingC, :ComputingC,
     :ComputingU, :ComputingU,
+    :WaitingSend, :WaitingSend,
+    :CheckConv, :CheckConv, # must occur after send
     :ComputingF, :ComputingF,
-    :Waiting, :Waiting,
-    #:StoringResults,
+    :WaitingRecv, :WaitingRecv, # receives convergence message
+    :WaitingSend, :WaitingSend, # sends fine solution
+    :WaitingSend, :WaitingSend, # sends convergence
     :Done,
 ]
 
@@ -46,6 +54,8 @@ schedule = ProcessesSchedule([1, 1])
     s2 = _prepare(log, 2)
     @test length(s1) + length(s2) == length(log)
 
+    @test length(s1) == length(TRACE1)
+    @test length(s2) == length(TRACE2)
     @test s1 == TRACE1
     @test s2 == TRACE2
 end
@@ -169,7 +179,7 @@ end
         s1 = _prepare(o.eventlog, 1)
         @test s1[1:4] == [:Started,
                           :WarmingUpC, :WarmingUpC,
-                          :Waiting]
+                          :WaitingRecv]
     end
     @testset "warmupf=true" begin
         o = CommunicatingObserver(2)
@@ -178,7 +188,7 @@ end
         s1 = _prepare(o.eventlog, 1)
         @test s1[1:4] == [:Started,
                           :WarmingUpF, :WarmingUpF,
-                          :Waiting]
+                          :WaitingRecv]
     end
     @testset "warmupc=true, warmupf=true" begin
         o = CommunicatingObserver(2)
@@ -188,6 +198,6 @@ end
         @test s1[1:6] == [:Started,
                           :WarmingUpC, :WarmingUpC,
                           :WarmingUpF, :WarmingUpF,
-                          :Waiting]
+                          :WaitingRecv]
     end
 end

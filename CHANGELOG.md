@@ -10,6 +10,8 @@
   and update functions, respectively (instead of being `abstract type`s).
   To support their own types, users need to define methods for `remake_prob`,
   `initial_value`, and `value`.
+- Rename `Waiting` event (start/stop) to `WaitingRecv`.
+- Add new `WaitingSend` and `CheckConv` events (start/stop).
 - Require Julia v1.6.
 
 # v0.3.0

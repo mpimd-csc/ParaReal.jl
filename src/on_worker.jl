@@ -25,6 +25,7 @@ function perform_step!(callback, Uᵏₙ₋₁, config::Config, stage::Stage)
     # Check convergence:
     ∞ = typemax(config.nconverged)
     if config.nconverged < ∞
+        @debug "Computing norm and dist" tag=:CheckConv n k type=:start _group=:eventlog
         norm_Uᵏ = norm(Uᵏ)
         if k > 0
             @unpack Uᵏ⁻¹, norm_Uᵏ⁻¹ = stage
@@ -38,6 +39,7 @@ function perform_step!(callback, Uᵏₙ₋₁, config::Config, stage::Stage)
             stage.converged = stage.nconverged >= config.nconverged
         end
         stage.norm_Uᵏ⁻¹ = norm_Uᵏ
+        @debug "Convergence check done" tag=:CheckConv n k type=:stop _group=:eventlog
     end
     #stage.converged = stage.converged || k >= n
 
@@ -169,7 +171,7 @@ end
 
 function receive_val(stage::Stage, k)
     @unpack prev, n = stage
-    @debug "Waiting for data" tag=:Waiting n k type=:start _group=:eventlog
+    @debug "Waiting for data" tag=:WaitingRecv n k type=:start _group=:eventlog
     # Do not remove cancellation messages, they shall clog the pipes:
     msg = fetch(prev)::Message
     iscancelled(msg) && return msg
@@ -177,14 +179,16 @@ function receive_val(stage::Stage, k)
     # therefore remove it from the channel:
     _msg = take!(prev)::Message
     @assert msg === _msg
-    @debug "New data received" tag=:Waiting n k type=:stop _group=:eventlog
+    @debug "New data received" tag=:WaitingRecv n k type=:stop _group=:eventlog payload=typeof(msg)
     return msg
 end
 
 function send_val(stage::Stage, U)
-    @unpack prev, next = stage
+    @unpack n, k, prev, next = stage
+    msg = Message(U)
+    @debug "Sending data" tag=:WaitingSend n k type=:start _group=:eventlog payload=typeof(msg)
     handle_cancellation(prev, stage) && return true
-    next === nothing && return false
-    put!(next, Message(U))
+    next !== nothing && put!(next, msg)
+    @debug "Data sent" tag=:WaitingSend n k type=:stop _group=:eventlog payload=typeof(msg)
     return false
 end
