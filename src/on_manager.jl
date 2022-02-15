@@ -12,9 +12,6 @@ function manage_nsteps!(pl::Pipeline{ProcessesSchedule}, Δk::Int)
     # Wait for completion; cancel on failure:
     safewait(pl, tasks)
 
-    # Fetching a task once yields a Future holding the stage:
-    map!(fetch∘fetch, pl.stages, tasks)
-
     return pl
 end
 
@@ -36,7 +33,7 @@ function safewait(pl::Pipeline, tasks)
 end
 
 fetch_stage(t::Union{Task,Future}) = fetch_stage(fetch(t))
-fetch_stage(s::Stage) = s
+fetch_stage(s::StageRef) = s
 
 #= TODO: Base.iterate
 function Base.iterate(pl::Pipeline, _=nothing)
@@ -74,26 +71,26 @@ end
 
 function init_stages(conns, locs, probs)
     N = length(locs)
-    stages = Vector{Stage}(undef, N)
+    stages = StageRef.(locs)
     for n in 1:N-1
         prob = probs[n]
         prev = conns[n]
         next = conns[n+1]
         loc = locs[n]
-        stages[n] = Stage(;
+        put!(stages[n], Stage(;
             prob,
             prev,
             next,
             loc,
             n,
-        )
+        ))
     end
-    stages[N] = Stage(;
+    put!(stages[N], Stage(;
         prob=probs[N],
         prev=conns[N],
         next=nothing,
         loc=locs[N],
         n=N,
-    )
+    ))
     return stages
 end

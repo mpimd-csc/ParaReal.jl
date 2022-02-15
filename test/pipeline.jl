@@ -51,7 +51,8 @@ function test_connections(ids, prob=prob, alg=alg; nolocaldata=true, kwargs...)
     nolocaldata || return
     # Unless the computations have been performed on this process,
     # the references to the local solutions should not contain any data.
-    @test_broken all(f -> f.v === nothing, sol.sols)
+    _location(sr::ParaReal.StageRef) = getfield(sr, :c).where
+    @test all(sr -> _location(sr) != myid(), sol.stages)
 end
 
 @testset "Smoke Test" begin

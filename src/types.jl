@@ -77,6 +77,13 @@ Base.@kwdef mutable struct Stage
     st::Union{Nothing,Base.StackTrace} = nothing
 end
 
+# Holds a remote reference to a Stage to prevent data transfer to the managing process.
+struct StageRef
+    c::RemoteChannel{Channel{Stage}}
+
+    StageRef(pid) = new(RemoteChannel(() -> Channel{Stage}(1), pid))
+end
+
 """
     Pipeline{<:Schedule}
 
@@ -92,7 +99,7 @@ Base.@kwdef mutable struct Pipeline{S}
     prob # global problem
     schedule::S
     config::Config
-    stages::Vector{Stage} # TODO: use DeferredFuture
+    stages::Vector{StageRef}
     conns::Vector{MessageChannel}
     cancelled::Bool = false
     logger = nothing
@@ -103,7 +110,7 @@ end
 struct Solution
     retcode::Symbol
     config::Config
-    stages::Vector{Stage}
+    stages::Vector{StageRef}
     cancelled::Bool
 end
 

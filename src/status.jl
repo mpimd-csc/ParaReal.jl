@@ -1,6 +1,7 @@
 isdone(s::Symbol) = s in (:Done, :Cancelled, :Failed)
 
 isfailed(s::Stage) = s.ex !== nothing
+isfailed(sr::StageRef) = fetch_from_owner(isfailed, sr)
 isfailed(pl::Pipeline) = any(isfailed, pl.stages)
 
 iscancelled(x::Union{Stage,Pipeline,Solution}) = x.cancelled

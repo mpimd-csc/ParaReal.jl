@@ -1,15 +1,17 @@
 function Base.show(io::IO, pl::Pipeline{S}) where {S}
     N = length(pl.stages)
     println(io, "Pipeline{$S} with $N stages:")
-    for (n, s) in enumerate(pl.stages)
-        l = s.loc
-        desc = if s.k == 0
+    for (n, r) in enumerate(pl.stages)
+        l, k, failed, cancelled, converged = fetch_from_owner(r) do s::Stage
+            s.loc, s.k, isfailed(s), iscancelled(s), s.converged
+        end
+        desc = if k == 0
             "not yet started"
-        elseif isfailed(s)
+        elseif failed
             "failed"
-        elseif iscancelled(s)
+        elseif cancelled
             "cancelled"
-        elseif s.converged
+        elseif converged
             "converged"
         else
             "ok"

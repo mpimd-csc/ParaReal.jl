@@ -33,7 +33,7 @@ sol = solve(ParaReal.Problem(prob), alg; schedule, maxiters=n, logger=NullLogger
 
 # Compute reference solution elsewhere to "skip" compilation:
 ref = solve(prob, Euler(), dt=1/10n)
-val = ParaReal.value(fetch(sol.stages[end]).Fᵏ⁻¹)
+val = ParaReal.value(sol.stages[end].Fᵏ⁻¹)
 
 @test sol isa ParaReal.Solution
 @test sol.retcode == :Success

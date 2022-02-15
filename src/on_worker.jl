@@ -1,6 +1,6 @@
 # This file contains code that will only ever run on the worker processes.
 
-function perform_step!(callback, Uᵏₙ₋₁, config, stage)
+function perform_step!(callback, Uᵏₙ₋₁, config::Config, stage::Stage)
     @unpack csolve, fsolve, update! = config.alg
     @unpack prob, n, k = stage
     stage.prob = prob = remake_prob(prob, Uᵏₙ₋₁, prob.tspan)
@@ -83,11 +83,11 @@ function handle_cancellation(x, s::Stage)
     return true
 end
 
-function handle_msg(c::Cancellation, _, stage)
+function handle_msg(c::Cancellation, _::Config, stage::Stage)
     handle_cancellation(c, stage)
 end
 
-function handle_msg(msg::NextValue, config, stage)
+function handle_msg(msg::NextValue, config::Config, stage::Stage)
     # The number `k(n)` of parareal steps performed of a given stage `n` must
     # differ by at most 1 compared to its previous stage, i.e. `k(n) >= k(n-1) - 1`.
     # Therefore, queue the incoming (refined) value and only process it if necessary.
@@ -115,7 +115,7 @@ function handle_msg(msg::NextValue, config, stage)
     return true
 end
 
-function handle_msg(::Convergence, config, stage)
+function handle_msg(::Convergence, config::Config, stage::Stage)
     # If the current stage did converge already, don't send the true final
     # value, i.e. the most recent fine solution. This way, the next stage has
     # the chance to converge early (cf. comment in `handle_msg(::NextValue)`).
@@ -139,10 +139,11 @@ function perform_nsteps!(
     prob,
     logger::Union{Nothing,AbstractLogger},
     config::Config,
-    stage::Stage,
+    stageref::StageRef,
     Δk::Int,
 )
     logger = something(logger, current_logger())
+    stage = take!(stageref)
     @unpack n, k = stage
     try
         with_logger(logger) do
@@ -163,7 +164,8 @@ function perform_nsteps!(
         stage.ex = ex
         stage.st = stacktrace(catch_backtrace(), true)
     end
-    return stage
+    put!(stageref, stage)
+    return stageref
 end
 
 function receive_val(stage::Stage, k)

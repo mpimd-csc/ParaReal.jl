@@ -30,7 +30,7 @@ sol = solve(ParaReal.Problem(prob), alg; schedule, maxiters=5, logger=NullLogger
 
 # Compute reference solution elsewhere to "skip" compilation:
 ref = fsolve_ode2(prob)
-val = ParaReal.value(fetch(sol.stages[end]).Fᵏ⁻¹)
+val = ParaReal.value(sol.stages[end].Fᵏ⁻¹)
 
 @test sol isa ParaReal.Solution
 @test val ≈ ref[end] rtol=0.01

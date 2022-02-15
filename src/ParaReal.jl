@@ -49,6 +49,7 @@ include("status.jl")
 include("logging.jl")
 
 include("utils.jl")
+include("util/stageref.jl")
 include("show.jl")
 
 end # module

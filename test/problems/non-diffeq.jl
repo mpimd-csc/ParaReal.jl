@@ -39,10 +39,5 @@ sol = ParaReal.solve(prob, alg; schedule, logger=NullLogger())
 @test sol isa ParaReal.Solution
 @test sol.retcode == :Success
 
-_sols = map(sol.stages) do s
-    fetch(s).Fᵏ⁻¹
-end
-_init = empty(_sols[1].Xs)
-Xs = mapreduce(sol -> sol.Xs, append!, _sols, init=_init)
-
+Xs = [ParaReal.value(s.Fᵏ⁻¹) for s in sol.stages]
 @test Xs == [[1], [2], [3], [4]]

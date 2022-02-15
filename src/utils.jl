@@ -16,3 +16,6 @@ function local_tspan(n::Integer, N::Integer, tspan::Tuple{T,T}) where T
     tf′ /= N
     (t0′, tf′)
 end
+
+
+getk(r::StageRef) = fetch_from_owner(s -> s.k, r)
