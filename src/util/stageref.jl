@@ -17,4 +17,5 @@ end
 Base.propertynames(::StageRef, private::Bool=false) = fieldnames(Stage)
 
 Base.put!(sr::StageRef, s::Stage) = put!(getfield(sr, :c), s)
-Base.take!(sr::StageRef) = take!(getfield(sr, :c))
+Base.fetch(sr::StageRef) = fetch(getfield(sr, :c))
+# Base.take! is intentionally not implemented

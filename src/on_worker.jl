@@ -143,7 +143,7 @@ function perform_nsteps!(
     Δk::Int,
 )
     logger = something(logger, current_logger())
-    stage = take!(stageref)
+    stage = fetch(stageref)
     @unpack n, k = stage
     try
         with_logger(logger) do
@@ -164,7 +164,6 @@ function perform_nsteps!(
         stage.ex = ex
         stage.st = stacktrace(catch_backtrace(), true)
     end
-    put!(stageref, stage)
     return stageref
 end
 
