@@ -1,5 +1,7 @@
 # DEV
 
+# v0.4.0
+
 - More robust convergence criterion: convergence is reached after `nconverged`
   successive Newton refinements without significant change, and the number of
   refinements differs by at most 1 from stage to stage.
