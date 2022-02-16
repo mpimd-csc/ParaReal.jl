@@ -41,7 +41,6 @@ function perform_step!(callback, Uᵏₙ₋₁, config::Config, stage::Stage)
         stage.norm_Uᵏ⁻¹ = norm_Uᵏ
         @debug "Convergence check done" tag=:CheckConv n k type=:stop _group=:eventlog
     end
-    #stage.converged = stage.converged || k >= n
 
     # Compute next fine solution:
     @debug "Computing fine solution" tag=:ComputingF n k type=:start _group=:eventlog
@@ -109,8 +108,7 @@ function handle_msg(msg::NextValue, config::Config, stage::Stage)
 
     # If the maximum number of iterations is reached, pretend to have converged.
     # TODO: Do I need another message type?
-    # TODO: k<K or k<=K ?
-    stage.k < config.K && return false
+    stage.k <= config.K && return false
     send_val(stage, Convergence())
     @unpack n, k, converged = stage
     @info "Stage finished" tag=:Done n k type=:singleton converged _group=:eventlog
@@ -127,8 +125,12 @@ function handle_msg(::Convergence, config::Config, stage::Stage)
         # so just send that directly.
         @unpack queue, Fᵏ⁻¹ = stage
         @assert isempty(queue)
+        # Remember that k stores the upcoming iteration:
         @assert k == n
-        send_val(stage, value(Fᵏ⁻¹)) && return true
+        Uᵏ = value(Fᵏ⁻¹)
+        stage.k = k = k + 1
+        stage.Uᵏ⁻¹, stage.Uᵏ = Uᵏ, stage.Uᵏ⁻¹
+        send_val(stage, Uᵏ) && return true
         converged = true
     end
     send_val(stage, Convergence()) && return true
@@ -152,7 +154,7 @@ function perform_nsteps!(
             @info "Stage started" tag=:Started n type=:singleton _group=:eventlog
             k == 0 && perform_warmup(prob, config, n)
             # TODO: these k don't relate directly to the numebr of refinments computed.
-            ks = k:k+Δk-1
+            ks = k:k+Δk # accept 1 further message for Convergence
             for k in ks
                 msg = receive_val(stage, k)
                 done = handle_msg(msg, config, stage)

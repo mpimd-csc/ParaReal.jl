@@ -115,7 +115,7 @@ struct Solution
 end
 
 function Solution(pl::Pipeline)
-    retcode = any(s -> s.k >= pl.config.K, pl.stages) ? :MaxIters : :Success
+    retcode = any(s -> s.k > pl.config.K, pl.stages) ? :MaxIters : :Success
     Solution(
         retcode,
         pl.config,
