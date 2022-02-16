@@ -14,7 +14,8 @@ Returns a [`Pipeline`](@ref).
   distributed/schedule the tasks executing the stages
 * `maxiters = 10`: maximum number of Newton refinements, `k <= K = maxiters`
 * `nconverged = 2`: number of consequtive refinements without significant change;
-  used to reason about convergence (more details below)
+  used to reason about convergence (more details below);
+  set to `typemax(Int)` to disable convergence checks altogether
 * `rtol::Float64 = size(iv, 1) * eps()`: relative error, where `iv = initial_value(prob.p)`;
   used to reason about convergence (more details below)
 * `atol::Float64 = 0.0`: absolute error;
@@ -46,6 +47,10 @@ A stage `n` is considered to have converged, if
 
 Due to the second criterion, `> nconverged` refinements without significant
 change might have been computed.
+
+Disable convergence checks by setting `nconverged` to `typemax(Int)`.
+Then, neither `dist` nor `norm` will be computed;
+they don't even require special methods for custom solution types.
 """
 function init(prob::Problem, alg::Algorithm;
               schedule::Schedule=ProcessesSchedule(),
