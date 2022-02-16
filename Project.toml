@@ -17,6 +17,7 @@ CommonSolve = "0.2"
 LoggingExtras = "0.4"
 Requires = "1"
 UnPack = "1"
+julia = "1.6"
 
 [extras]
 LoggingFormats = "98105f81-4425-4516-93fd-1664fb551ab6"

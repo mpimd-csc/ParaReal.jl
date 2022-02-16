@@ -1,8 +1,15 @@
 using ParaReal
 
-struct TestProblem <: ParaReal.Problem tspan end
+struct TestProblem
+    v
+    tspan
+end
+
 struct TestSolution end
 
-ParaReal.remake_prob!(::TestProblem, _, _, tspan) = TestProblem(tspan)
-ParaReal.initialvalue(::TestProblem) = [21]
-ParaReal.nextvalue(::TestSolution) = [21]
+TestProblem() = TestProblem(nothing)
+TestProblem(v) = TestProblem(v, (0., 42.))
+
+ParaReal.remake_prob(::TestProblem, v, tspan) = TestProblem(v, tspan)
+ParaReal.initial_value(p::TestProblem) = p.v
+ParaReal.value(::TestSolution) = [21]

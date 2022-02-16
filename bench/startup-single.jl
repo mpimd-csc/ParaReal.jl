@@ -37,14 +37,14 @@ end
 end
 u0 = [1., 0.]
 tspan = (0., 100.)
-prob = ParaReal.problem(ODEProblem(f, u0, tspan))
+prob = ParaReal.Problem(ODEProblem(f, u0, tspan))
 
 @info "Creating algorithm instance"
 @everywhere begin
     csolve(prob) = solve(prob, ImplicitEuler(), dt=1.0, adaptive=false)
     fsolve(prob) = solve(prob, ImplicitEuler(), dt=0.1, adaptive=false)
 end
-alg = ParaReal.algorithm(csolve, fsolve)
+alg = ParaReal.Algorithm(csolve, fsolve)
 
 @info "Starting solver"
 t_solve = @elapsed(sol = solve(prob, alg, maxiters=5))

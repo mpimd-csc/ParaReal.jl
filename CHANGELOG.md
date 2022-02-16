@@ -1,3 +1,19 @@
+# DEV
+
+- More robust convergence criterion: convergence is reached after `nconverged`
+  successive Newton refinements without significant change, and the number of
+  refinements differs by at most 1 from stage to stage.
+- Rename `initialvalue` to `initial_value`.
+- Rename `nextvalue` to `value`.
+- Simplified design around `Problem` as well as `Algorithm`: they are now simple
+  wrappers (i.e. `struct`s) of user-defined problem instance as well as solver
+  and update functions, respectively (instead of being `abstract type`s).
+  To support their own types, users need to define methods for `remake_prob`,
+  `initial_value`, and `value`.
+- Rename `Waiting` event (start/stop) to `WaitingRecv`.
+- Add new `WaitingSend` and `CheckConv` events (start/stop).
+- Require Julia v1.6.
+
 # v0.3.0
 
 - Fix deadlock due to fake convergence (!26)

@@ -1,102 +1,125 @@
-abstract type Problem end
+"""
+    Problem(p)
 
-struct WrappedProblem <: Problem
+Simple wrapper that is only necessary to hook into `CommonSolve`.
+"""
+struct Problem
     p
 end
 
-problem(p) = WrappedProblem(p)
+"""
+    Algorithm(csolve, fsolve[, update!])
 
-unwrap(p::WrappedProblem) = p.p
-unwrap(p) = p
-
-abstract type Algorithm end
-
-struct FunctionalAlgorithm <: Algorithm
-    coarse
-    fine
+* `csolve(prob) -> Gᵏ` computes the low-accurary / cheap / coarse solution
+* `fsolve(prob) -> Fᵏ` computes the high-accurary / fine solution
+* `update!(Uᵏ, value(Gᵏ), value(Fᵏ⁻¹), value(Gᵏ⁻¹)) -> Uᵏ`
+  computes the Newton refinement and may work in-place.
+  If not provided, this defaults to [`default_update!`](@ref).
+  Solutions are unwrapped using [`value`](@ref).
+"""
+Base.@kwdef struct Algorithm
+    csolve # csolve(prob) -> Gᵏ
+    fsolve # fsolve(prob) -> Fᵏ
+    update!::Any = default_update! # update!(Uᵏ, value(Gᵏ), value(Fᵏ⁻¹), value(Gᵏ⁻¹)) -> Uᵏ; may work in-place
 end
 
-algorithm(csolve, fsolve) = FunctionalAlgorithm(csolve, fsolve)
+Algorithm(csolve, fsolve) = Algorithm(; csolve, fsolve)
 
-struct Message
-    cancelled::Bool
-    converged::Bool
-    u::Any
+abstract type Schedule end
+struct ProcessesSchedule <: Schedule
+    workers::Vector{Int}
 end
+# TODO: Threads, Hybrid?, GPU?
+
+ProcessesSchedule() = ProcessesSchedule(workers())
+
+abstract type Message end
+struct Cancellation <: Message end
+struct Convergence <: Message end
+struct NextValue <: Message
+    U::Any
+end
+
+Message(msg::Message) = msg
+Message(U) = NextValue(U)
 
 const MessageChannel = RemoteChannel{Channel{Message}}
 
-Base.@kwdef struct StageConfig
-    n::Int # corresponding step in the pipeline
-    N::Int # total number of steps in the pipeline
-    prev::MessageChannel # where to get new `u0`-values from
-    next::MessageChannel # where to put `u0`-values for the next pipeline step
-    sol::Future # where to put the solution objects after convergence
-    logger::Union{Nothing,AbstractLogger}
+# constant; the same for all stages
+struct Config
+    alg::Algorithm
+    N::Int # number of stages
+    K::Int # maximum number of Newton refinements
+    nconverged::Int # set to typemax(Int) to disable convergence checks, default: 3
+    atol::Float64 # default: 0
+    rtol::Float64 # default: size(U₀, 1) * eps()
+    warmup::Tuple{Bool,Bool} # whether to warm up csolve and fsolve
+end
+
+# differs per stage; stores working state
+Base.@kwdef mutable struct Stage
+    prob # local problem
+    loc # meaning depends on schedule
+    prev::MessageChannel
+    next::Union{Nothing,MessageChannel}
+    n::Int
+    k::Int = 0 # upcoming iteration, i.e. number of refinements computed is `k-1`
+    cancelled::Bool = false
+    converged::Bool = false
+    nconverged::Int = 0 # number of refinements w/o significant change
+    queue::Vector{Any} = Any[] # unprocessed U values of previous stage
+    Fᵏ⁻¹ = nothing
+    Gᵏ⁻¹ = nothing
+    Uᵏ⁻¹ = nothing
+    Uᵏ = nothing # work data, content might be garbage
+    norm_Uᵏ⁻¹::Float64 = -1.0
+    ex::Union{Nothing,Exception} = nothing
+    st::Union{Nothing,Base.StackTrace} = nothing
+end
+
+# Holds a remote reference to a Stage to prevent data transfer to the managing process.
+struct StageRef
+    c::RemoteChannel{Channel{Stage}}
+
+    StageRef(pid) = new(RemoteChannel(() -> Channel{Stage}(1), pid))
 end
 
 """
-Local solution over a single time slice
-"""
-struct LocalSolution{S}
-    n::Int # step in the pipeline
-    k::Int # number of Newton iterations
-    sol::S
-    retcode::Symbol
-end
+    Pipeline{<:Schedule}
 
-"""
-Global solution over the whole time span
-"""
-struct GlobalSolution
-    sols::Vector{Future}
-    retcodes::Vector{Symbol}
-    retcode::Symbol
-
-    function GlobalSolution(sols)
-        fetch_from_owner(f, rr) = remotecall_fetch(f∘fetch, rr.where, rr)
-        retcodes = map(sols) do rsol
-            isready(rsol) || return :Unknown
-            fetch_from_owner(sol -> sol.retcode, rsol)
-        end
-        retcode = all(==(:Success), retcodes) ? :Success : :MaxIters
-        new(sols, retcodes, retcode)
-    end
-end
-
-"""
-# Pipeline Interface
+User interface:
 
 * [`init`](@ref)
 * [`solve!`](@ref)
 * [`cancel_pipeline!`](@ref)
+* [`is_pipeline_cancelled`](@ref)
+* [`is_pipeline_failed`](@ref)
 """
-Base.@kwdef mutable struct Pipeline
-    prob
-    alg
-    kwargs
+Base.@kwdef mutable struct Pipeline{S}
+    prob # global problem
+    schedule::S
+    config::Config
+    stages::Vector{StageRef}
     conns::Vector{MessageChannel}
-    sol::Union{GlobalSolution, Nothing} = nothing
-
-    # Worker stages:
-    workers::Vector{Int}
-    configs::Vector{StageConfig}
-    sols::Vector{Future}
-    tasks::Union{Vector{Task}, Nothing} = nothing
-
-    # Status updates:
     cancelled::Bool = false
+    logger = nothing
+end
+# The logger cannot be part of the stage, because it may not be possible to send
+# it back to the manager, see e.g. LazyFileLogger.
+
+struct Solution
+    retcode::Symbol
+    config::Config
+    stages::Vector{StageRef}
+    cancelled::Bool
 end
 
-NextValue(u) = Message(false, false, u)
-FinalValue(u) = Message(false, true, u)
-Cancellation() = Message(true, false, nothing)
-
-"""
-    nextvalue(sol)
-
-Extract the initial value for the next ParaReal iteration.
-Defaults to `sol[end]`.
-"""
-nextvalue(sol) = sol[end]
-nextvalue(m::Message) = m.u
+function Solution(pl::Pipeline)
+    retcode = any(s -> s.k > pl.config.K, pl.stages) ? :MaxIters : :Success
+    Solution(
+        retcode,
+        pl.config,
+        pl.stages,
+        pl.cancelled,
+    )
+end

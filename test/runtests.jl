@@ -14,6 +14,7 @@ include("types.jl")
 @time @testset "ParaReal.jl" begin
     include("utils.jl")
     @testset "Explosions" begin include("explosions.jl") end
+    @testset "Convergence" begin include("convergence.jl") end
     @testset "Pipeline Interface" begin include("pipeline.jl") end
     @testset "Logging" begin include("logging.jl") end
     @testset "Problem Types" begin

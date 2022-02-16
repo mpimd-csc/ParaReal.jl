@@ -5,72 +5,92 @@
 
 Initialize a pipeline to eventually run on the worker ids specified by
 `workers`. Do not start the tasks executing the pipeline stages.
-Supported keyword arguments:
 
-* `workers = workers()`: worker ids to run the pipeline on
-* `maxiters = 10`: maximum number of Newton refinements
-* `tol = 1e-5`: relative error bound to judge about preliminary convergence
-* `nconverged = 2`: lower bound on successive converged refinements
+Returns a [`Pipeline`](@ref).
+
+# Keyword Arguments
+
+* `schedule::ParaReal.Schedule = ProcessesSchedule()`: specify how to
+  distributed/schedule the tasks executing the stages
+* `maxiters = 10`: maximum number of Newton refinements, `k <= K = maxiters`
+* `nconverged = 2`: number of consequtive refinements without significant change;
+  used to reason about convergence (more details below);
+  set to `typemax(Int)` to disable convergence checks altogether
+* `rtol::Float64 = size(iv, 1) * eps()`: relative error, where `iv = initial_value(prob.p)`;
+  used to reason about convergence (more details below)
+* `atol::Float64 = 0.0`: absolute error;
+  used to reason about convergence (more details below)
 * `logger = nothing`: where to log messages on the pipeline stages.
   If `nothing`, use `current_logger()` on the respective workers.
   Errors will be rethrown outside `with_logger(logger) do ... end`,
   i.e. handled by the global logger.
+* `warmupc::Bool = true`: controls JIT-warmup of `csolve`, cf. [`Algorithm`](@ref)
+* `warmupf::Bool = false`: controls JIT-warmup of `fsolve`, cf. [`Algorithm`](@ref)
 
-Only if `nconverged` successive refinements show a relative change of
-at most `tol`, the corresponding time slice is considered convergent.
+# Convergence
 
-Returns a [`Pipeline`](@ref).
+A refinement `Uᵏ` showed no significant change if
+
+```
+dist(Uᵏ, Uᵏ⁻¹) <= max(atol, max(norm(Uᵏ), norm(Uᵏ⁻¹)) * rtol)
+```
+
+using [`dist`](@ref) and `LinearAlgebra.norm`.
+As computing `norm(Uᵏ)` might be expensive, its value is cached between iterations.
+Other than that, this works essentially like `isapprox`.
+
+A stage `n` is considered to have converged, if
+
+1. `>= nconverged` successive refinements showed no significant change, and
+2. the previous stage `n-1` needed to compute at most 1 refinement more,
+   i.e. `k(n) >= k(n-1) - 1`.
+
+Due to the second criterion, `> nconverged` refinements without significant
+change might have been computed.
+
+Disable convergence checks by setting `nconverged` to `typemax(Int)`.
+Then, neither `dist` nor `norm` will be computed;
+they don't even require special methods for custom solution types.
 """
 function init(prob::Problem, alg::Algorithm;
-              workers::Vector{Int}=D.workers(),
+              schedule::Schedule=ProcessesSchedule(),
+              maxiters::Int=10,
+              nconverged::Int=2,
+              rtol::Float64=size(initial_value(prob.p), 1) * eps(),
+              atol::Float64=0.0,
               logger=nothing,
-              kwargs...)
+              warmupc::Bool=true,
+              warmupf::Bool=false,
+              )
 
-    issubset(workers, D.procs()) ||
-        error("Unknown worker ids in `$workers`, no subset of `$(D.procs())`")
-    allunique(workers) ||
-        @warn "Multiple tasks per worker won't run in parallel. Use for debugging only."
+    # Setup pipeline:
+    conns, locs = init_pipes(schedule)
+    N = length(conns)
+    probs = init_problems(prob.p, N)
+    stages = init_stages(conns, locs, probs)
+    @assert length(locs) == length(probs) == length(stages) == N
 
-    bufsize = get(kwargs, :maxiters, 10) # TODO: find a better solution
-    conns = map(workers) do w
-        RemoteChannel(() -> Channel{Message}(bufsize), w)
-    end
-    N = length(workers)
-    configs = Vector{StageConfig}(undef, N)
-    sols = map(Future, workers)
+    warmup = (warmupc, warmupf)
+    config = Config(
+        alg,
+        N,
+        maxiters,
+        nconverged,
+        atol,
+        rtol,
+        warmup,
+    )
 
-    # Initialize first stages:
-    for n in 1:N-1
-        prev = conns[n]
-        next = conns[n+1]
-        sol = sols[n]
-        configs[n] = StageConfig(n=n,
-                                 N=N,
-                                 prev=prev,
-                                 next=next,
-                                 sol=sol,
-                                 logger=getlogger(logger, n))
-    end
+    pl = Pipeline(;
+        prob=prob.p,
+        schedule,
+        config,
+        stages,
+        conns,
+        logger,
+    )
 
-    # Initialize final stage:
-    prev = next = conns[N]
-    sol = sols[end]
-    # Pass a `::ValueChannel` instead of `nothing` as to not trigger another
-    # compilation. The value of `next` will never be accessed anyway.
-    configs[N] = StageConfig(n=N,
-                             N=N,
-                             prev=prev,
-                             next=next,
-                             sol=sol,
-                             logger=getlogger(logger, N))
-
-    Pipeline(prob=unwrap(prob),
-             alg=alg,
-             kwargs=kwargs,
-             conns=conns,
-             workers=workers,
-             configs=configs,
-             sols=sols)
+    return pl
 end
 
 """
@@ -80,40 +100,36 @@ Create and schedule the tasks executing the pipeline stages.
 Send the problem's initial value and wait for the completion of all stages.
 Throws an error if the pipeline failed.
 """
-function solve!(pipeline::Pipeline)
-    pipeline.sol === nothing || return pipeline.sol
-    is_pipeline_started(pipeline) && error("Pipeline already started")
+function solve!(pl::Pipeline)
+    # Don't run the pipeline twice:
+    if all(s -> s.k == 0, pl.stages)
+        # Send initial value:
+        c = first(pl.conns)
+        put!(c, NextValue(initial_value(pl.prob)))
 
-    # Start pipeline executors and event handler:
-    @unpack workers, configs = pipeline
-    @unpack prob, alg, kwargs = pipeline
-    pipeline.tasks = map(workers, configs) do w, c
-        @async remotecall_wait(execute_stage, w, prob, alg, c; kwargs...)
+        # Ensure diagonal convergence, i.e. convergence after `k == n`:
+        put!(c, Convergence())
+
+        # Schedule and run pipeline tasks:
+        manage_nsteps!(pl, pl.config.K)
     end
 
-    # Send initial value:
-    @unpack conns = pipeline
-    c = first(conns)
-    val = initialvalue(prob)
-    put!(c, FinalValue(val))
-
-    # Wait for completion; cancel on failure:
-    @sync for (n, t) in enumerate(pipeline.tasks)
-        @async try
-            wait(t)
-        catch e
-            @warn "Cancelling pipeline due to failure on stage $n"
-            cancel_pipeline!(pipeline)
-            rethrow()
+    # If any of the stages failed, collect all the errors and throw them:
+    if isfailed(pl)
+        ex = CompositeException()
+        for s in pl.stages
+            isfailed(s) || continue
+            push!(ex, CapturedException(s.ex, s.st))
         end
+        throw(ex)
     end
 
-    @unpack sols = pipeline
-    pipeline.sol = GlobalSolution(sols)
+    sol = Solution(pl)
+    return sol
 end
 
 """
-    cancel_pipeline!(pl::Pipeline)
+    cancel_pipeline!(::ParaReal.Pipeline)
 
 Abandon all computations along the pipeline.
 Do not wait for all the stages to stop.

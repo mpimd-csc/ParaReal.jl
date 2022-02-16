@@ -32,9 +32,8 @@ test:
   parallel:
     matrix:
       - JULIA_VERSION:
-          - '1.4'
-          #- '1.5' # takes forever
           - '1.6'
+          - '1.7'
 
 # Test that the benchmark script isn't broken.
 benchmark:

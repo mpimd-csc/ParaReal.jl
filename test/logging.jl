@@ -5,36 +5,46 @@ using ParaReal: CommunicatingObserver, TimingFileObserver
 using LoggingExtras
 using LoggingFormats: LogFmt
 
-prob = TestProblem((0., 42.))
+prob = ParaReal.Problem(TestProblem((0., 42.)))
 stub = _ -> TestSolution()
-alg = ParaReal.algorithm(stub, stub)
+alg = ParaReal.Algorithm(stub, stub)
 
 const TRACE1 = [
     :Started,
-    :Waiting, :Waiting,
+    :WaitingRecv, :WaitingRecv,
     :ComputingC, :ComputingC,
-    :ComputingU, :ComputingU,
+    :WaitingSend, :WaitingSend,
+    :CheckConv, :CheckConv, # not a full convergence check; only computes norm
     :ComputingF, :ComputingF,
-    :StoringResults,
+    :WaitingRecv, :WaitingRecv, # receives convergence message
+    :WaitingSend, :WaitingSend, # sends fine solution
+    :WaitingSend, :WaitingSend, # sends convergence
     :Done,
 ]
 const TRACE2 = [
     :Started,
-    :Waiting, :Waiting,
+    :WaitingRecv, :WaitingRecv,
+    :ComputingC, :ComputingC,
+    :WaitingSend, :WaitingSend,
+    :CheckConv, :CheckConv, # not a full convergence check; only computes norm
+    :ComputingF, :ComputingF,
+    :WaitingRecv, :WaitingRecv,
     :ComputingC, :ComputingC,
     :ComputingU, :ComputingU,
+    :WaitingSend, :WaitingSend,
+    :CheckConv, :CheckConv, # must occur after send
     :ComputingF, :ComputingF,
-    :Waiting, :Waiting,
-    :ComputingC, :ComputingC,
-    :ComputingU, :ComputingU,
-    :ComputingF, :ComputingF,
-    :StoringResults,
+    :WaitingRecv, :WaitingRecv, # receives convergence message
+    :WaitingSend, :WaitingSend, # sends fine solution
+    :WaitingSend, :WaitingSend, # sends convergence
     :Done,
 ]
 
+schedule = ProcessesSchedule([1, 1])
+
 @testset "E.T. phone home" begin
-    o = CommunicatingObserver(2)
-    solve(prob, alg; logger=o, workers=[1, 1], warmupc=false, warmupf=false)
+    global o = CommunicatingObserver(2)
+    solve(prob, alg; logger=o, schedule, warmupc=false, warmupf=false)
     @test istaskdone(o.handler)
 
     log = o.eventlog
@@ -44,6 +54,8 @@ const TRACE2 = [
     s2 = _prepare(log, 2)
     @test length(s1) + length(s2) == length(log)
 
+    @test length(s1) == length(TRACE1)
+    @test length(s2) == length(TRACE2)
     @test s1 == TRACE1
     @test s2 == TRACE2
 end
@@ -94,12 +106,13 @@ end
 
 @testset "Multiple Custom Loggers" begin
     function _test_logger(workers, dir=mktempdir())
+        s = ProcessesSchedule(workers)
         logfiles = [joinpath(dir, "$n.log") for n in 1:2]
         loggers = [LazyFormatLogger(LogFmt(), file) for file in logfiles]
-        solve(prob, alg; logger=loggers, workers=workers, warmupc=false, warmupf=false)
+        solve(prob, alg; logger=loggers, schedule=s, warmupc=false, warmupf=false)
         @test readdir(dir) == ["1.log", "2.log"]
-        @test countlines(logfiles[1]) == 11
-        @test countlines(logfiles[2]) == 19
+        @test countlines(logfiles[1]) == length(TRACE1)
+        @test countlines(logfiles[2]) == length(TRACE2)
         tag = r" tag=\"([^\"]*)\""
         t1 = _extract(tag, logfiles[1])
         t2 = _extract(tag, logfiles[2])
@@ -129,11 +142,11 @@ end
         @test !ispath(dir)
         o = TimingFileObserver(LogFmt(), Base.time, dir)
         @test ispath(dir)
-        solve(prob, alg; logger=o, workers=[1, 1], warmupc=false, warmupf=false)
+        solve(prob, alg; logger=o, schedule, warmupc=false, warmupf=false)
         @test readdir(dir) == ["1.log", "2.log"]
         logfiles = readdir(dir, join=true)
-        @test countlines(logfiles[1]) == 11
-        @test countlines(logfiles[2]) == 19
+        @test countlines(logfiles[1]) == length(TRACE1)
+        @test countlines(logfiles[2]) == length(TRACE2)
         hastime(line) = occursin(r"time=[\"]?[0-9]", line) # value might be "quoted"
         @test all(hastime, readlines(logfiles[1]))
         @test all(hastime, readlines(logfiles[2]))
@@ -149,7 +162,7 @@ end
         return (; args..., kwargs=kwargs)
     end
 
-    solve(prob, alg; logger=l, workers=[1, 1], warmupc=false, warmupf=false)
+    solve(prob, alg; logger=l, schedule, warmupc=false, warmupf=false)
     @test istaskdone(o.handler)
 
     log = o.eventlog
@@ -161,30 +174,30 @@ end
 @testset "JIT Warm-Up" begin
     @testset "warmupc=true" begin
         o = CommunicatingObserver(2)
-        solve(prob, alg; logger=o, workers=[1, 1], warmupc=true, warmupf=false)
+        solve(prob, alg; logger=o, schedule, warmupc=true, warmupf=false)
 
         s1 = _prepare(o.eventlog, 1)
         @test s1[1:4] == [:Started,
                           :WarmingUpC, :WarmingUpC,
-                          :Waiting]
+                          :WaitingRecv]
     end
     @testset "warmupf=true" begin
         o = CommunicatingObserver(2)
-        solve(prob, alg; logger=o, workers=[1, 1], warmupc=false, warmupf=true)
+        solve(prob, alg; logger=o, schedule, warmupc=false, warmupf=true)
 
         s1 = _prepare(o.eventlog, 1)
         @test s1[1:4] == [:Started,
                           :WarmingUpF, :WarmingUpF,
-                          :Waiting]
+                          :WaitingRecv]
     end
     @testset "warmupc=true, warmupf=true" begin
         o = CommunicatingObserver(2)
-        solve(prob, alg; logger=o, workers=[1, 1], warmupc=true, warmupf=true)
+        solve(prob, alg; logger=o, schedule, warmupc=true, warmupf=true)
 
         s1 = _prepare(o.eventlog, 1)
         @test s1[1:6] == [:Started,
                           :WarmingUpC, :WarmingUpC,
                           :WarmingUpF, :WarmingUpF,
-                          :Waiting]
+                          :WaitingRecv]
     end
 end
