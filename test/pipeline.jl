@@ -1,4 +1,5 @@
 using Distributed, Test
+using Logging
 
 verbose = isinteractive()
 verbose && @info "Verifying setup"
@@ -31,12 +32,12 @@ alg = ParaReal.Algorithm(csolve_pl, fsolve_pl)
 # Before attempting to run jobs on remote machines, perform a local smoke test
 # to catch stupid mistakes early.
 
-function test_connections(ids, prob=prob, alg=alg; nolocaldata=true, kwargs...)
+function test_connections(ids, prob=prob, alg=alg)
     verbose && @info "Testing workers=$ids ..."
     verbose && @info "Initializing pipeline"
     global l = CommunicatingObserver(length(ids))
     s = ProcessesSchedule(ids)
-    global pl = init(prob, alg; logger=l, schedule=s, maxiters=10, kwargs...)
+    global pl = init(prob, alg; logger=l, schedule=s, maxiters=10)
     @test l.status[1] == :Initialized
 
     verbose && @info "Starting worker tasks"
@@ -47,16 +48,10 @@ function test_connections(ids, prob=prob, alg=alg; nolocaldata=true, kwargs...)
     # It is safe to retrieve solution twice:
     sol′ = solve!(pl)
     @test sol === sol′
-
-    nolocaldata || return
-    # Unless the computations have been performed on this process,
-    # the references to the local solutions should not contain any data.
-    _location(sr::ParaReal.StageRef) = getfield(sr, :c).where
-    @test all(sr -> _location(sr) != myid(), sol.stages)
 end
 
 @testset "Smoke Test" begin
-    test_connections([1,1,1,1]; nolocaldata=false)
+    test_connections([1,1,1,1])
 end
 
 # Assuming the stages of a pipeline are executed on different threads on each
@@ -141,4 +136,46 @@ end
     global pl = init(prob, bangbang; logger=l, schedule=s, maxiters=10)
     @test_throws CompositeException solve!(pl)
     @test l.status == [:Failed, :Failed]
+end
+
+# Thanks to the authors of DeferredFutures.jl for this test strategy:
+@testset "No local data" begin
+    @everywhere ws include("types.jl")
+
+    data_size = 80_000
+    HUGE = _ -> rand(10_000)
+    prob = ParaReal.Problem(TestProblem())
+    alg = ParaReal.Algorithm(HUGE, HUGE)
+
+    worker_size_before = asyncmap(ws) do w
+        remotecall_fetch(w) do
+            GC.gc()
+            Base.summarysize(Distributed)
+        end
+    end
+    GC.gc()
+    size_before = Base.summarysize(Distributed)
+
+    sol = solve(
+        prob, alg;
+        schedule=ProcessesSchedule(ws),
+        rtol=0.0,
+        logger=NullLogger(),
+    )
+
+    GC.gc()
+    size_after = Base.summarysize(Distributed)
+    worker_size_after = asyncmap(ws) do w
+        remotecall_fetch(w) do
+            GC.gc()
+            Base.summarysize(Distributed)
+        end
+    end
+
+    # The data must not reside on the local process:
+    @test size_after < size_before + data_size
+
+    # Each worker should have created at least one solution:
+    @test worker_size_after[1] >= worker_size_before[1] + data_size
+    @test worker_size_after[2] >= worker_size_before[2] + data_size
 end
