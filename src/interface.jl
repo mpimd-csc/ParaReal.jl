@@ -17,7 +17,7 @@ function remake_prob end
 """
     value(sol)
 
-Extract the (last) value from the solution object return by `csolve` or `fsolve`
+Extract the (last) value from the solution object returned by `csolve` or `fsolve`
 to be used within `update!`, cf. [`Algorithm`](@ref), or
 to be used as the initial value for the next parareal stage, cf. [`remake_prob`](@ref).
 
