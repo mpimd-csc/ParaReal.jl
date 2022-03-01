@@ -24,6 +24,7 @@ to be used as the initial value for the next parareal stage, cf. [`remake_prob`]
 Defaults to `sol[end]`.
 """
 value(sol) = sol[end]
+value(s::Union{Stage,StageRef}) = s.Uᵏ⁻¹
 
 """
     dist(u, v)
@@ -33,3 +34,10 @@ Compute the distance between `u` and `v`.
 Defaults to `LinearAlgebra.norm(u - v)`.
 """
 dist(u, v) = norm(u - v)
+
+"""
+    solution(stage)
+
+Extract the most recent fine solution as returned by `fsolve`.
+"""
+solution(s::Union{Stage,StageRef}) = s.Fᵏ⁻¹

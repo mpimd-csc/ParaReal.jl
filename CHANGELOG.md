@@ -1,5 +1,10 @@
 # DEV
 
+# v0.4.1
+
+- Add ASCII accessor `value(stage) = stage.Uᵏ⁻¹`
+- Add ASCII accessor `solution(stage) = stage.Fᵏ⁻¹`
+
 # v0.4.0
 
 - More robust convergence criterion: convergence is reached after `nconverged`
