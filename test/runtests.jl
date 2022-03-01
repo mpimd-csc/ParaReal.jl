@@ -17,6 +17,7 @@ include("types.jl")
     @testset "Convergence" begin include("convergence.jl") end
     @testset "Pipeline Interface" begin include("pipeline.jl") end
     @testset "Logging" begin include("logging.jl") end
+    @testset "User Interface" begin include("interface.jl") end
     @testset "Problem Types" begin
         @testset "diffeq ODE" begin
             include("problems/diffeq-ode.jl")
