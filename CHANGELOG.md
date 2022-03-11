@@ -1,5 +1,9 @@
 # DEV
 
+# v0.4.2
+
+- Fix handling of early convergence (944c9acd81143ec2f4b8d88950a2e6e9029de769)
+
 # v0.4.1
 
 - Add ASCII accessor `value(stage) = stage.Uᵏ⁻¹`
