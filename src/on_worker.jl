@@ -126,7 +126,6 @@ function handle_msg(::Convergence, config::Config, stage::Stage)
         @unpack queue, Fᵏ⁻¹ = stage
         @assert isempty(queue)
         # Remember that k stores the upcoming iteration:
-        @assert k == n
         Uᵏ = value(Fᵏ⁻¹)
         stage.k = k = k + 1
         stage.Uᵏ⁻¹, stage.Uᵏ = Uᵏ, stage.Uᵏ⁻¹
