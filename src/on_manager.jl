@@ -3,10 +3,27 @@
 function manage_nsteps!(pl::Pipeline{ProcessesSchedule}, Δk::Int)
     @unpack prob, logger, config, stages = pl
     k = 0 # initial iteration
-    tasks = map(stages) do stage
+    delays = fill(0.05, 3)
+    tasks = map(enumerate(stages)) do (n, stage)
         pid = stage.loc # process id
         l = getlogger(logger, stage.n)
-        @async remotecall_wait(perform_nsteps!, pid, prob, l, config, stage, Δk)
+
+        # Sometimes `remotecall_wait` fails for no apparent reason (maybe a
+        # corrupted message, even though it's TCP), so retry if the stage
+        # hasn't been launched already. Take `k==0` as a proxy for that, i.e.
+        # retry if iteration 0 is still the "upcoming iteration".
+        #
+        # Unfortunately, this is untested as it should ideally never happen.
+        #
+        # https://discourse.julialang.org/t/how-to-debug-remotecall-wait-deserialization-failures/77864
+        @async retry(
+            () -> remotecall_wait(perform_nsteps!, pid, prob, l, config, stage, Δk);
+            delays = delays,
+            check = (attempt, err) -> begin
+                @warn "Retrying stage $n (attempt #$attempt)" err
+                stage.k == 0 # lazy!
+            end,
+        )()
     end
 
     # Wait for completion; cancel on failure:

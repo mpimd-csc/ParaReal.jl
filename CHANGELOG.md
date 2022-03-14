@@ -1,5 +1,7 @@
 # DEV
 
+- Retry stages 3 times on failure outside solvers, e.g. serialization failures (#36)
+
 # v0.4.2
 
 - Fix handling of early convergence (944c9acd81143ec2f4b8d88950a2e6e9029de769)
