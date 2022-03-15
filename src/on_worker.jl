@@ -154,6 +154,8 @@ function perform_nsteps!(
             k == 0 && perform_warmup(prob, config, n)
             # TODO: these k don't relate directly to the numebr of refinments computed.
             ks = k:k+Δk # accept 1 further message for Convergence
+            # TODO: think about the footnote of # https://gitlab.mpi-magdeburg.mpg.de/jschulze/ParaReal.jl/-/issues/35#note_13539
+            # A more robust solution would be `while true ... end` and dropping the design+ideas to make `Pipeline` iterable.
             for k in ks
                 msg = receive_val(stage, k)
                 done = handle_msg(msg, config, stage)

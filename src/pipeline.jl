@@ -111,7 +111,7 @@ function solve!(pl::Pipeline)
         put!(c, Convergence())
 
         # Schedule and run pipeline tasks:
-        manage_nsteps!(pl, pl.config.K)
+        manage_nsteps!(pl, 1 + pl.config.K)
     end
 
     # If any of the stages failed, collect all the errors and throw them:

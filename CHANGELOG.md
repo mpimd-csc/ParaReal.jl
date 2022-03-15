@@ -1,6 +1,8 @@
 # DEV
 
 - Retry stages 3 times on failure outside solvers, e.g. serialization failures (#36)
+- Fix deadlock when pipeline converges after exactly `K` iterations,
+  while having one value queued (#35)
 
 # v0.4.2
 
