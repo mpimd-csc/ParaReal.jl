@@ -1,7 +1,7 @@
 name = "ParaReal"
 uuid = "d8ab9f86-dde6-11e9-3216-afd74457b932"
 authors = ["Jonas Schulze <jschulze@mpi-magdeburg.mpg.de> and contributors"]
-version = "0.4.2"
+version = "0.4.3"
 
 [deps]
 CommonSolve = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
