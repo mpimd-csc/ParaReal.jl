@@ -22,9 +22,11 @@ function perform_step!(callback, Uᵏₙ₋₁, config::Config, stage::Stage)
     cancelled = callback(Uᵏ)
     cancelled && return false
 
+    # TODO: maybe use zero instead of typemax
     # Check convergence:
     ∞ = typemax(config.nconverged)
     if config.nconverged < ∞
+        # TODO: maybe rename tag to :CheckingConv
         @debug "Computing norm and dist" tag=:CheckConv n k type=:start _group=:eventlog
         norm_Uᵏ = norm(Uᵏ)
         if k > 0

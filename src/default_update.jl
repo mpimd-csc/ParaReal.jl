@@ -14,7 +14,7 @@ When extending the parareal method for custom types `T`,
 you may either provide your own update function for [`Algorithm`](@ref),
 or you may define `-(::T)` as well as `+(::T...)`.
 Of course, a binary or tertiary `+` is also fine.
-Defining a method for this function is not recommended.
+Defining a method for `default_update!` is not recommended.
 """
 default_update!
 

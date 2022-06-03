@@ -24,6 +24,12 @@ to be used as the initial value for the next parareal stage, cf. [`remake_prob`]
 Defaults to `sol[end]`.
 """
 value(sol) = sol[end]
+
+"""
+    value(stage)
+
+Extract the most recent parareal refinement as returned by e.g. [`default_update!`](@ref).
+"""
 value(s::Union{Stage,StageRef}) = s.Uᵏ⁻¹
 
 """

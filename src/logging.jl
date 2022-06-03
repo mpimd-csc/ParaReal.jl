@@ -14,12 +14,48 @@ function Logging.handle_message(l::CommunicatingLogger, lvl, msg, mod, group, id
     put!(l.events, (; kwargs..., msg=msg))
 end
 
-# Open file on first log, without testing whether the file had already been opened.
-# Therefore, only one LazyFormatLogger for a particular file should exist.
-#
-# Before first use, this logger is safe to be sent to other workers in a
-# Distributed environment. Once the `logger` field is initialized, it contains
-# an `IOStream` which is not safe to be sent over the network.
+"""
+    LazyFormatLogger(f::Function, filename::String, append=false, always_flush=true)
+
+Logger sink that formats the message and finally writes them to `filename`.
+Opens file when handling the first log event.
+Uses `LoggingExtras.FormatLogger` internally.
+
+Handles only events having `_group=:eventlog`.
+
+# Examples
+
+```jldoctest
+julia> using Logging
+
+julia> using ParaReal: LazyFormatLogger
+
+julia> fname = tempname();
+
+julia> logger = LazyFormatLogger(fname) do io, args
+           println(io, args.level, ": ", args.message)
+       end;
+
+julia> isfile(fname)
+false
+
+julia> with_logger(logger) do
+           @info "Hello world!" _group=:eventlog
+       end
+
+julia> print(read(fname, String))
+Info: Hello world!
+```
+
+# Reference
+
+The logger does not test whether the file had already been opened.
+Therefore, only one `LazyFormatLogger` for a particular file should exist.
+
+Before first use, this logger is safe to be sent to other workers in a
+`Distributed` environment. Once the `logger` field is initialized, it contains
+an `IOStream` which is not safe to be sent over the network.
+"""
 mutable struct LazyFormatLogger <: Logger
     f::Function
     filename::String
@@ -32,6 +68,8 @@ function LazyFormatLogger(f::Function, filename::String; append::Bool=false, alw
     LazyFormatLogger(f, filename, append, always_flush, nothing)
 end
 
+# TODO: Do I need a finalizer to close the file handle?
+# The logger will likely exist until Julia exits anyways.
 function Logging.handle_message(l::LazyFormatLogger, args...; kwargs...)
     if l.logger === nothing
         fname = l.filename
@@ -60,6 +98,16 @@ struct CommunicatingObserver
     end
 end
 
+"""
+    TimingFileObserver(f::Function, t::Function, dir::String)
+
+Create `dir` and have every parareal stage `n::Int` log to `dir/n.log`.
+Add `time=t()` to every log event and format events using `f`, e.g.
+
+```julia
+TimingFileObserver(LoggingFormats.LogFmt(), Base.time, "logfiles")
+```
+"""
 struct TimingFileObserver
     f::Function
     t::Function
