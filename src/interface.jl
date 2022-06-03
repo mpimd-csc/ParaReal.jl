@@ -44,6 +44,7 @@ dist(u, v) = norm(u - v)
 """
     solution(stage)
 
-Extract the most recent fine solution as returned by `fsolve`.
+Extract the most recent fine solution as returned by `fsolve`,
+cf. [`Algorithm`](@ref).
 """
 solution(s::Union{Stage,StageRef}) = s.Fᵏ⁻¹

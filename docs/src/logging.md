@@ -1,4 +1,4 @@
-# Logging
+# [Logging](@id logging_usage)
 
 ```@meta
 CurrentModule=ParaReal
