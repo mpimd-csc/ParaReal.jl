@@ -1,15 +1,14 @@
-# Index
+# ParaReal.jl
 
-The four kinds of documentation:
+A [parareal](https://en.wikipedia.org/wiki/Parareal) orchestrator written in Julia.
 
-* Tutorials: learning-oriented
-* How-to guides: problem-oriented
-* Reference: information-oriented
-* Explanation: understanding-oriented
+It has been tested on a [Slurm](https://slurm.schedmd.com/) allocation using 450 cores on 29 nodes.
 
-More context:
+Main features:
 
-- https://www.writethedocs.org/videos/eu/2017/the-four-kinds-of-documentation-and-why-you-need-to-understand-what-they-are-daniele-procida/
-- https://documentation.divio.com/
+* Arbitrary problem and solution types, cf. [counting demo](@ref counting_demo)
+* Lazy data management (does not implicitly send data to calling process), cf. [Riccati demo](@ref riccati_demo)
+* Heterogeneous parareal values/iterates w.r.t. storage size and data type
+* Parallel warm-up of solvers
+* Logging solver start and stop times
 
-Check any of the demos for a guideline on how to support custom problem and/or solution types.

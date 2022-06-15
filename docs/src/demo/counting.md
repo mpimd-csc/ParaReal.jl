@@ -6,7 +6,7 @@ CurrentModule=ParaReal
 
 In this rather abstract example we will count the applications of the coarse
 and fine solvers within a parareal solve.
-It is meant as a guideline of what to implement/define for custom solution types.
+It is meant as a guideline of what to implement/define for custom problem and solution types.
 
 Start by launching some worker processes and loading the necessary packages:
 

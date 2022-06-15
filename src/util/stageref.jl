@@ -1,3 +1,11 @@
+"""
+    fetch_from_owner(f, x, args...)
+
+Loosely speaking, call `f(fetch(x), args...)` on the process holding `x` and fetch the result.
+Allowed values of `x` are `Distributed.AbstractRemoteRef` and `ParaReal.StageRef`.
+"""
+function fetch_from_owner end
+
 function fetch_from_owner(f, rr::Distributed.AbstractRemoteRef, args...)
     remotecall_fetch(rr.where, rr, args) do rrr, rargs
         @assert isready(rrr)

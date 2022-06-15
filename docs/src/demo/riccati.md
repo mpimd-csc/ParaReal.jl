@@ -1,8 +1,15 @@
-# Matrix Riccati Equation
+# [Matrix Riccati Equation](@id riccati_demo)
 
 ```@meta
 CurrentModule=ParaReal
 ```
+
+This example is meant to demonstrate
+
+* differently sized parareall iterates $U_n^k$,
+  where $n$ denotes the time slice, and $k$ denotes the parareal/Newton refinement, and
+* lazy data management, i.e. not to send (potentially huge amounts of) solution data back to the calling process,
+  as by default, every parareal stage $n$ is scheduled onto a separate process.
 
 Consider the Differential Riccati Equation (DRE)
 
@@ -17,16 +24,16 @@ E^T X(t_f) E &= \tfrac{1}{100} C^T C
 ```
 
 for autonomous system matrices $E,A,B,C$.
-In general, the solution $X(t) \in\mathbb R^{n\times n}$ is dense but has a low numerical rank.[^Lang2017]
+In general, the solution $X(t) \in\mathbb R^{n\times n}$ is dense but has a low numerical rank.
 For a large state dimension it is therefore infeasible to store $X$ as a `Matrix`.
 We will use [`DifferentialRiccatiEquations`](https://gitlab.mpi-magdeburg.mpg.de/jschulze/DifferentialRiccatiEquations.jl)
-and its `LDLᵀ` data type that represents every solution value as
+and its `LDLᵀ` data type that represents every solution value in the symmetric-indefinite low-rank factorization
 
 ```math
 X(t) = LDL^T
 ```
 
-where $L\in\mathbb R^{n\times r}$ is a skinny matrix, i.e. $r \ll n$.
+where $L\in\mathbb R^{n\times r}$ is a skinny matrix, i.e. $r \ll n$.[^Lang2017]
 
 [^Lang2017]: See e.g. Section 2.1.4 and the references therein: Norman Lang. "Numerical methods for large-scale linear time-varying control systems and related differential matrix equations." PhD thesis. Technische Universität Chemnitz, 2017.
 
@@ -84,13 +91,13 @@ end
 Define the coarse and fine solvers to be used in the parareal scheme:
 
 ```julia
-@everywhere
+@everywhere begin
     csolve(prob) = solve(prob, Ros1(); dt=prob.tspan[2] - prob.tspan[1])
     fsolve(prob) = solve(prob, Ros1(); dt=(prob.tspan[2] - prob.tspan[1])/100)
 end
 ```
 
-Finally, load the system matrices, define problem and algorithm instance,
+Load the system matrices, define problem and algorithm instance,
 and solve the Riccati equation:
 
 ```julia
@@ -105,3 +112,26 @@ prob = ParaReal.Problem(GDREProblem(E, A, B, C, X₀, tspan))
 alg  = ParaReal.Algorithm(csolve, fsolve)
 sol  = solve(prob, alg; rtol=1e-6, nconverged=2)
 ```
+
+The full trajectory of the fine solver may be extracted using [`solution`](@ref).
+As to not transfer the data to the calling process,
+use [`fetch_from_owner`](@ref) to write the results directly to disk from the processes holding the data:
+
+```julia
+# Ensure output directly exists:
+dir = "out"
+mkpath(dir)
+
+@sync for sref in sol.stages
+    @async fetch_from_owner(sref) do s::ParaReal.Stage
+        lsol = solution(s)
+        tmin, tmax = extrema(sol.t)
+        fname = joinpath(dir, "t=$tmin:$max.h5")
+        # Write local solution `lsol` to `fname`, e.g. via
+        DrWatson.wsave(fname, sol)
+    end
+end
+```
+
+The above works well as a blueprint for [`DrWatson._wsave`](https://juliadynamics.github.io/DrWatson.jl/v2.9/save/#Saving-Tools-1)
+for `ParaReal.Solution`.

@@ -1,5 +1,8 @@
 # API Reference
 
+```@index
+```
+
 ```@meta
 CurrentModule = ParaReal
 ```
@@ -22,6 +25,7 @@ ParaReal.init
 ParaReal.solve!
 Problem
 Algorithm
+Solution
 ```
 
 ## Problem Interface
@@ -82,4 +86,10 @@ TimingFileObserver
 LazyFormatLogger
 CommunicatingObserver
 CommunicatingLogger
+```
+
+## Utilities
+
+```@docs
+fetch_from_owner
 ```

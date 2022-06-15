@@ -1,10 +1,10 @@
 using Documenter, ParaReal
 
 makedocs(
-    sitename = "My Doc",
+    sitename = "ParaReal.jl",
     modules = [ParaReal],
     pages = [
-        "index.md",
+        "Home" => "index.md",
         "Demos" => [
             "demo/counting.md",
             "demo/riccati.md",

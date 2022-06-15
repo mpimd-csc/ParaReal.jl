@@ -107,6 +107,17 @@ end
 # The logger cannot be part of the stage, because it may not be possible to send
 # it back to the manager, see e.g. LazyFileLogger.
 
+"""
+    Solution
+
+Non-mutable container of relevant [`Pipeline`](@ref) information.
+Its fields are:
+
+* `retcode::Symbol`: return code
+* `config::Config`: configuration that all pipeline stages have in common
+* `stages::Vector{StageRef}`: references to the pipline stages
+* `cancelled::Bool`: whether the pipeline has been cancelled, e.g. due to a stage failure
+"""
 struct Solution
     retcode::Symbol
     config::Config
