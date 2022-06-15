@@ -1,4 +1,8 @@
-# Counting Solver Applications
+# [Counting Solver Applications](@id counting_demo)
+
+```@meta
+CurrentModule=ParaReal
+```
 
 In this rather abstract example we will count the applications of the coarse
 and fine solvers within a parareal solve.
@@ -68,7 +72,7 @@ sol = solve(
 )
 ```
 
-Lastly, extracting the final values $U_1^1$, $U_2^2$, and $U_3^2$ using [`ParaReal.value`](@ref) yields
+Lastly, extracting the final values $U_1^1$, $U_2^2$, and $U_3^2$ using [`value`](@ref value(::Stage)) yields
 
 ```julia
 julia> value(sol.stages[1]) # U₁¹

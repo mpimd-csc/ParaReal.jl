@@ -45,6 +45,7 @@ and/or pass a custom `update!` function, cf. [`Algorithm`](@ref).
 ```@docs
 dist
 default_update!
+value(::Any)
 ```
 
 ## Pipeline Interface
@@ -67,7 +68,7 @@ Use the following functions to access its information.
 Check the demos for usage information.
 
 ```@docs
-value
+value(::Union{Stage,StageRef})
 solution
 ```
 
