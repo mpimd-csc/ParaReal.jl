@@ -64,7 +64,7 @@ which causes stage `n` to use logger `vec[n]`.
   creates a [`CommunicatingLogger`](@ref) for every stage,
   which sends all events to the observer via a `RemoteChannel`
 - [`TimingFileObserver`](@ref):
-  creates a [`LazyFormatLogger`](@ref) for every sage,
+  creates a [`LazyFormatLogger`](@ref) for every stage,
   which adds a time stamp to every event and writes them to its own logfile
 
 To implement a custom observer, define a method for [`getlogger(obs, n)`](@ref).
