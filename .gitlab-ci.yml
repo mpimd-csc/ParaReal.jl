@@ -38,6 +38,8 @@ test:
 demo:
   interruptible: true
   image: julia:1.6
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
   script:
     - cd demo
     - julia --project -e 'import Pkg; Pkg.instantiate(); Pkg.develop(path="..")'

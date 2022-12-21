@@ -45,9 +45,7 @@ uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
 [[deps.DifferentialRiccatiEquations]]
 deps = ["CommonSolve", "Compat", "LinearAlgebra", "MatrixEquations", "SparseArrays", "UnPack"]
-git-tree-sha1 = "abf858e618fe3ba23db8c9ef305fe9fcf854d70f"
-repo-rev = "master"
-repo-url = "git@gitlab.mpi-magdeburg.mpg.de:jschulze/DifferentialRiccatiEquations.jl.git"
+path = "vendor/DifferentialRiccatiEquations.jl"
 uuid = "9819f967-4574-4d9d-b214-002eeba273d9"
 version = "0.2.2"
 
