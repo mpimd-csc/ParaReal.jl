@@ -35,6 +35,15 @@ test:
           - '1.6'
           - '1.7'
 
+demo:
+  interruptible: true
+  image: julia:1.6
+  script:
+    - cd demo
+    - julia --project -e 'import Pkg; Pkg.instantiate(); Pkg.develop(path="..")'
+    - julia --project counting.jl
+    - julia --project riccati.jl
+
 # Test that the benchmark script isn't broken.
 benchmark:
   interruptible: true
