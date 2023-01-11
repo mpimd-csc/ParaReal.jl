@@ -43,11 +43,12 @@ demo:
   image: julia:1.7
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
+    JULIA_PROJECT: "@."
   script:
     - cd demo
-    - julia --project -e 'import Pkg; Pkg.instantiate(); Pkg.develop(path="..")'
-    - julia --project counting.jl
-    - julia --project riccati.jl
+    - julia -e 'import Pkg; Pkg.instantiate(); Pkg.develop(path="..")'
+    - julia counting.jl
+    - julia riccati.jl
 
 # Test that the benchmark script isn't broken.
 benchmark:
