@@ -14,6 +14,9 @@ end
 
 # Generate documentation
 makedocs(
+    format = Documenter.HTML(
+        edit_link=nothing,
+    ),
     sitename = "ParaReal.jl",
     modules = [ParaReal],
     pages = [
