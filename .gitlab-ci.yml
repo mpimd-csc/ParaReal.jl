@@ -50,6 +50,18 @@ demo:
     - julia counting.jl
     - julia riccati.jl
 
+docs:
+  interruptible: true
+  image: julia:1.8
+  script:
+    - cd docs
+    - julia --project -e 'import Pkg; Pkg.instantiate(); Pkg.develop(path="..")'
+    - julia --project make.jl
+  artifacts:
+    paths:
+      - docs/build
+    expire_in: 7 days
+
 # Test that the benchmark script isn't broken.
 benchmark:
   interruptible: true
