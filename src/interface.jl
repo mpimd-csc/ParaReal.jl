@@ -24,6 +24,12 @@ to be used as the initial value for the next parareal stage, cf. [`remake_prob`]
 Defaults to `sol[end]`.
 """
 value(sol) = sol[end]
+
+"""
+    value(stage)
+
+Extract the most recent parareal refinement as returned by e.g. [`default_update!`](@ref).
+"""
 value(s::Union{Stage,StageRef}) = s.Uᵏ⁻¹
 
 """
@@ -38,6 +44,7 @@ dist(u, v) = norm(u - v)
 """
     solution(stage)
 
-Extract the most recent fine solution as returned by `fsolve`.
+Extract the most recent fine solution as returned by `fsolve`,
+cf. [`Algorithm`](@ref).
 """
 solution(s::Union{Stage,StageRef}) = s.Fᵏ⁻¹

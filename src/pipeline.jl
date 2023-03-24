@@ -99,6 +99,8 @@ end
 Create and schedule the tasks executing the pipeline stages.
 Send the problem's initial value and wait for the completion of all stages.
 Throws an error if the pipeline failed.
+
+Returns a [`Solution`](@ref).
 """
 function solve!(pl::Pipeline)
     # Don't run the pipeline twice:

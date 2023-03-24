@@ -35,6 +35,33 @@ test:
           - '1.6'
           - '1.7'
 
+# TODO: test using 1.6 once these are resolved:
+# https://github.com/JuliaIO/MAT.jl/issues/179
+# https://github.com/JuliaIO/TranscodingStreams.jl/issues/131
+demo:
+  interruptible: true
+  image: julia:1.7
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+    JULIA_PROJECT: "@."
+  script:
+    - cd demo
+    - julia -e 'import Pkg; Pkg.instantiate(); Pkg.develop(path="..")'
+    - julia counting.jl
+    - julia riccati.jl
+
+docs:
+  interruptible: true
+  image: julia:1.8
+  script:
+    - cd docs
+    - julia --project -e 'import Pkg; Pkg.instantiate(); Pkg.develop(path="..")'
+    - julia --project make.jl
+  artifacts:
+    paths:
+      - docs/build
+    expire_in: 7 days
+
 # Test that the benchmark script isn't broken.
 benchmark:
   interruptible: true
