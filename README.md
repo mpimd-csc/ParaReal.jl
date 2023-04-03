@@ -15,3 +15,20 @@ Main features:
 * Parallel warm-up of solvers
 * Logging solver start and stop times
 
+## Getting started
+
+The package can be installed from Julia's REPL:
+
+```
+pkg> dev git@gitlab.mpi-magdeburg.mpg.de:jschulze/ParaReal.jl.git
+```
+
+Check out the demo and test files:
+
+* `demo/riccati.jl` solves a differential Riccati equation (DRE) having a low-rank solution
+* `demo/counting.jl` counts solver applications (demo for custom types)
+* `test/problems/diffeq-ode.jl` solves a linear ordinary differential equation (ODE) using [OrdinaryDiffEq.jl]
+* `test/problems/non-diffeq.jl` counts time discretization points (test for custom types)
+
+[OrdinaryDiffEq.jl]: https://github.com/SciML/OrdinaryDiffEq.jl
+
