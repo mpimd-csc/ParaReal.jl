@@ -30,5 +30,12 @@ Check out the demo and test files:
 * `test/problems/diffeq-ode.jl` solves a linear ordinary differential equation (ODE) using [OrdinaryDiffEq.jl]
 * `test/problems/non-diffeq.jl` counts time discretization points (test for custom types)
 
+Before running the demos, make sure to initialize the git submodules:
+
+```bash
+cd path/to/ParaReal.jl
+git submodule update --init
+```
+
 [OrdinaryDiffEq.jl]: https://github.com/SciML/OrdinaryDiffEq.jl
 
