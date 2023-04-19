@@ -9,9 +9,33 @@ It has been tested on a [Slurm](https://slurm.schedmd.com/) allocation using 450
 
 Main features:
 
-* Arbitrary problem and solution types, cf. [counting demo](@ref counting_demo)
-* Lazy data management (does not implicitly send data to calling process), cf. [Riccati demo](@ref riccati_demo)
+* Arbitrary problem and solution types
+* Lazy data management (does not implicitly send data to calling process)
 * Heterogeneous parareal values/iterates w.r.t. storage size and data type
 * Parallel warm-up of solvers
 * Logging solver start and stop times
+
+## Getting started
+
+The package can be installed from Julia's REPL:
+
+```
+pkg> dev git@gitlab.mpi-magdeburg.mpg.de:jschulze/ParaReal.jl.git
+```
+
+Check out the demo and test files:
+
+* `demo/riccati.jl` solves a differential Riccati equation (DRE) having a low-rank solution
+* `demo/counting.jl` counts solver applications (demo for custom types)
+* `test/problems/diffeq-ode.jl` solves a linear ordinary differential equation (ODE) using [OrdinaryDiffEq.jl]
+* `test/problems/non-diffeq.jl` counts time discretization points (test for custom types)
+
+Before running the demos, make sure to initialize the git submodules:
+
+```bash
+cd path/to/ParaReal.jl
+git submodule update --init
+```
+
+[OrdinaryDiffEq.jl]: https://github.com/SciML/OrdinaryDiffEq.jl
 
