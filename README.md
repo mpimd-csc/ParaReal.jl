@@ -39,3 +39,14 @@ git submodule update --init
 
 [OrdinaryDiffEq.jl]: https://github.com/SciML/OrdinaryDiffEq.jl
 
+## License
+
+The ParaReal package is licensed under [MIT], see `LICENSE`.
+This does *not* cover files in `demo/vendor/` which are redistributed under their respective licenses:
+
+* DifferentialRiccatiEquations.jl: [MIT]
+* `Rail371.mat` within DifferentialRiccatiEquations.jl: [CC-BY-4.0]
+
+[MIT]: https://spdx.org/licenses/MIT.html
+[CC-BY-4.0]: https://spdx.org/licenses/CC-BY-4.0.html
+

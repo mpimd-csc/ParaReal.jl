@@ -1,3 +1,5 @@
+# This file is a part of ParaReal. License is MIT: https://spdx.org/licenses/MIT.html
+
 # Loggers
 
 abstract type Logger <: AbstractLogger end

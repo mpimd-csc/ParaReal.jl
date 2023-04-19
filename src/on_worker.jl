@@ -1,3 +1,5 @@
+# This file is a part of ParaReal. License is MIT: https://spdx.org/licenses/MIT.html
+
 # This file contains code that will only ever run on the worker processes.
 
 function perform_step!(callback, Uᵏₙ₋₁, config::Config, stage::Stage)

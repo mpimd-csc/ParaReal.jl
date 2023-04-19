@@ -1,3 +1,5 @@
+# This file is a part of ParaReal. License is MIT: https://spdx.org/licenses/MIT.html
+
 function Base.show(io::IO, pl::Pipeline{S}) where {S}
     N = length(pl.stages)
     println(io, "Pipeline{$S} with $N stages:")

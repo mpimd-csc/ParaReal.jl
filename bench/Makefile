@@ -1,3 +1,5 @@
+# This file is a part of ParaReal. License is MIT: https://spdx.org/licenses/MIT.html
+
 sname = $(@:.jobid=)
 sdeps = cat $(filter %.jobid,$^) | sed -e 's/^/:/' | tr -d '\n'
 sbatch = sbatch --parsable -e %x-%j.err

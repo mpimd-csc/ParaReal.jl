@@ -1,3 +1,5 @@
+# This file is a part of ParaReal. License is MIT: https://spdx.org/licenses/MIT.html
+
 """
     default_update!(Uᵏ, Gᵏ, Fᵏ⁻¹, Gᵏ⁻¹) -> Uᵏ
 

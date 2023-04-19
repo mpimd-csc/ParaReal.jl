@@ -1,3 +1,5 @@
+# This file is a part of ParaReal. License is MIT: https://spdx.org/licenses/MIT.html
+
 #!/bin/bash
 #SBATCH -J bench
 #SBATCH -o %x-%j.out

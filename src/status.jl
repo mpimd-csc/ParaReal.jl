@@ -1,3 +1,5 @@
+# This file is a part of ParaReal. License is MIT: https://spdx.org/licenses/MIT.html
+
 isdone(s::Symbol) = s in (:Done, :Cancelled, :Failed)
 
 isfailed(s::Stage) = s.ex !== nothing

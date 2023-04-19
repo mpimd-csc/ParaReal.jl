@@ -1,3 +1,5 @@
+# This file is a part of ParaReal. License is MIT: https://spdx.org/licenses/MIT.html
+
 # This file contains code that will only ever run on the managing process.
 
 function manage_nsteps!(pl::Pipeline{ProcessesSchedule}, Δk::Int)
