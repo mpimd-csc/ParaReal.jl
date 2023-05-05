@@ -16,7 +16,7 @@ variables:
 # Do not cache Manifest.toml so that Julia still uses the most recent packages.
 cache:
   key:
-    prefix: ${CI_JOB_NAME}
+    prefix: ${CI_JOB_NAME}-${CI_JOB_IMAGE}
     files:
       - Project.toml
   paths:
