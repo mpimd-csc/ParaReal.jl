@@ -19,7 +19,7 @@ Main features:
 
 The package can be installed from Julia's REPL:
 
-```
+```julia-repl
 pkg> dev git@gitlab.mpi-magdeburg.mpg.de:jschulze/ParaReal.jl.git
 ```
 
@@ -49,4 +49,3 @@ This does *not* cover files in `demo/vendor/` which are redistributed under thei
 
 [MIT]: https://spdx.org/licenses/MIT.html
 [CC-BY-4.0]: https://spdx.org/licenses/CC-BY-4.0.html
-
