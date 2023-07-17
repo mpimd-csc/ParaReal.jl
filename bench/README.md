@@ -1,12 +1,18 @@
 # Benchmarks
 
+Before running any of the benchmarks, instantiate the Julia environment:
+
+```bash
+julia --project -e "import Pkg; Pkg.instantiate()"
+```
+
 ## Time to first solution
 
 How long does it take to load the `ParaReal` package and compile the routines
-on all the workers? 
+on all the workers?
 
 ```bash
-$ julia --project startup-single.jl
+julia --project startup-single.jl
 ```
 
 How is this affected by the number of workers?
@@ -17,6 +23,10 @@ e.g.  `out/startup_JOBID=123_N=4_T=1.csv`, where `N` is the number of nodes and
 `T` the number of tasks per node, i.e. corresponding to a total of `N*T` worker
 processes. The file names are compatible to `savename` and `parse_savename`
 from [DrWatson].
+
+> **Warning**
+> The `Makefile` has not been used/tested in a long time.
+> Use with caution and adjust to your needs.
 
 [Slurm]: https://slurm.schedmd.com/
 [DrWatson]: https://juliadynamics.github.io/DrWatson.jl/stable/
