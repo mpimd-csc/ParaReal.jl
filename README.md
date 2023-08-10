@@ -2,8 +2,8 @@
 
 A [parareal](https://en.wikipedia.org/wiki/Parareal) orchestrator written in Julia.
 
-[![Build Status](https://gitlab.mpi-magdeburg.mpg.de/jschulze/ParaReal.jl/badges/master/pipeline.svg)](https://gitlab.mpi-magdeburg.mpg.de/jschulze/ParaReal.jl/pipelines)
-[![Coverage](https://gitlab.mpi-magdeburg.mpg.de/jschulze/ParaReal.jl/badges/master/coverage.svg)](https://gitlab.mpi-magdeburg.mpg.de/jschulze/ParaReal.jl/commits/master)
+[![Build Status](https://gitlab.mpi-magdeburg.mpg.de/jschulze/ParaReal.jl/badges/main/pipeline.svg)](https://gitlab.mpi-magdeburg.mpg.de/jschulze/ParaReal.jl/pipelines)
+[![Coverage](https://gitlab.mpi-magdeburg.mpg.de/jschulze/ParaReal.jl/badges/main/coverage.svg)](https://gitlab.mpi-magdeburg.mpg.de/jschulze/ParaReal.jl/commits/main)
 
 It has been tested on a [Slurm](https://slurm.schedmd.com/) allocation using 450 cores on 29 nodes.
 

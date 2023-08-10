@@ -7,8 +7,8 @@ authors:
 type: software
 title: ParaReal.jl
 license: MIT
-version: 0.4.3
-date-released: 2022-03-16
+version: 0.4.4
+date-released: 2022-08-10
 url: https://github.com/mpimd-csc/ParaReal.jl
 preferred-citation:
   type: mastersthesis

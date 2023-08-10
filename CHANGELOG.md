@@ -1,5 +1,10 @@
 # DEV
 
+# v0.4.4
+
+- Improve documentation
+- Rename default branch to `main`
+
 # v0.4.3
 
 - Retry stages 3 times on failure outside solvers, e.g. serialization failures (#36)
