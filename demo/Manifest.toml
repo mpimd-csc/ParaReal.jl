@@ -185,7 +185,7 @@ version = "1.4.1"
 deps = ["CommonSolve", "Distributed", "LinearAlgebra", "Logging", "LoggingExtras", "Requires", "UnPack"]
 path = ".."
 uuid = "d8ab9f86-dde6-11e9-3216-afd74457b932"
-version = "0.4.3"
+version = "0.4.5"
 
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
