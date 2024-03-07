@@ -39,6 +39,13 @@ git submodule update --init
 
 [OrdinaryDiffEq.jl]: https://github.com/SciML/OrdinaryDiffEq.jl
 
+## Acknowledgments
+
+I would like to thank the code reviewers:
+
+* Martin Köhler (https://github.com/grisuthedragon)
+* Kathryn Lund (https://github.com/katlund)
+
 ## License
 
 The ParaReal package is licensed under [MIT], see `LICENSE`.

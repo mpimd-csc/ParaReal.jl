@@ -15,16 +15,11 @@ export ProcessesSchedule
 import Base.Threads,
        Distributed
 
-using Base.Iterators: countfrom, repeat
-using Base.Threads: nthreads, @threads
 using Distributed: Future,
                    RemoteChannel,
-                   procs,
                    remotecall_fetch,
                    remotecall_wait,
-                   workers,
-                   @fetchfrom,
-                   @spawnat
+                   workers
 using LinearAlgebra: norm
 using Logging
 using LoggingExtras: FormatLogger, TransformerLogger
