@@ -2,6 +2,10 @@
 DifferentialRiccatiEquations = "9819f967-4574-4d9d-b214-002eeba273d9"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
+MORWiki = "4add22a6-c4b7-49d8-833a-0e1707ec89d0"
 ParaReal = "d8ab9f86-dde6-11e9-3216-afd74457b932"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
+
+[compat]
+DifferentialRiccatiEquations = "0.3"

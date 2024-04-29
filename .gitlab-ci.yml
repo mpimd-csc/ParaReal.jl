@@ -49,7 +49,7 @@ demo:
   interruptible: true
   image: julia:1.7
   variables:
-    GIT_SUBMODULE_STRATEGY: recursive
+    DATADEPS_ALWAYS_ACCEPT: 1
     JULIA_PROJECT: "@."
   script:
     - cd demo

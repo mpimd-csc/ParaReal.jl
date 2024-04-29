@@ -1,3 +1,0 @@
-[submodule "demo/vendor/DifferentialRiccatiEquations.jl"]
-	path = demo/vendor/DifferentialRiccatiEquations.jl
-	url = ../DifferentialRiccatiEquations.jl.git

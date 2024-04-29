@@ -1,6 +1,7 @@
 # DEV
 
 - Allow LoggingExtras version 1
+- Remove vendored DifferentialRiccatiEquations
 
 # v0.4.5
 

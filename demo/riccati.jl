@@ -42,7 +42,8 @@
 # Start by launching some worker processes and loading the necessary packages:
 
 using Distributed
-using DrWatson, UnPack, MAT
+using DrWatson, UnPack
+using MORWiki: assemble, SteelProfile
 #md using SlurmClusterManager
 
 addprocs(5) #src
@@ -95,9 +96,7 @@ end
 # Load the system matrices, define problem and algorithm instance,
 # and solve the Riccati equation:
 
-data = joinpath(pkgdir(DifferentialRiccatiEquations), "test", "Rail371.mat")
-P = matread(data)
-@unpack E, A, B, C = P
+@unpack E, A, B, C = assemble(SteelProfile(371))
 L = E \ collect(C')
 D = spdiagm(fill(0.01, size(L, 2)))
 X₀ = LDLᵀ(L, D)
