@@ -19,8 +19,9 @@ Main features:
 
 The package can be installed from Julia's REPL:
 
-```julia-repl
-pkg> dev git@gitlab.mpi-magdeburg.mpg.de:jschulze/ParaReal.jl.git
+```julia
+import Pkg
+Pkg.add("ParaReal")
 ```
 
 Check out the demo and test files:
