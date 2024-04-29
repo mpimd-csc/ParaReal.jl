@@ -1,6 +1,9 @@
 # DEV
 
+- Allow LoggingExtras version 1
+
 # v0.4.5
+
 - Fix regression for Julia v1.9 by removing unused imports
 
 # v0.4.4
